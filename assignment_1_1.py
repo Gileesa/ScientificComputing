@@ -55,11 +55,12 @@ def animate_wave(u_matrix):
     fig, ax = plt.subplots()
     line, = ax.plot(x, u_matrix[0])
 
+    # set limits for proper animation
     ax.set_xlim(x.min(), x.max())
     ax.set_ylim(u_matrix.min(), u_matrix.max())
 
     def update(t):
-        line.set_ydata(u_matrix[t*5]) #make animation faster
+        line.set_ydata(u_matrix[t*5]) # make animation faster by *5
         return line,
 
     ani = FuncAnimation(
