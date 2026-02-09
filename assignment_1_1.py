@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import matplotlib as mpl
 
 
 L = 1 # length of the string
@@ -16,11 +17,23 @@ Nt = int(T / dt) # number of time steps
 r = c * (dt / dx) 
 
 u = np.zeros((Nt+1, N+1)) # u[n, i] n = time, i = space
+v = np.zeros((Nt+1, N+1))
+y = np.zeros((Nt+1, N+1))
 
 u[0, :] = np.sin(2*np.pi*x)
 # initial conditions (fixed boundary conditions)
 u[0, 0] = 0.0
 u[0, -1] = 0.0
+
+v[0, :] = np.sin(5*np.pi*x)
+# initial conditions (fixed boundary conditions)
+v[0, 0] = 0.0
+v[0, -1] = 0.0
+
+y[0, :] = np.where((x > (1/5)) & (x < (2/5)), np.sin(5 * np.pi * x), 0.0)
+# initial conditions (fixed boundary conditions)
+y[0, 0] = 0.0
+y[0, -1] = 0.0
 
 def initial_wave_profile(u, N, r):
     for i in range(1, N):
@@ -40,6 +53,10 @@ def propagate_wave(u, N, Nt, r):
 
 u = initial_wave_profile(u, N, r)
 u = propagate_wave(u, N, Nt, r)
+v = initial_wave_profile(v, N, r)
+v = propagate_wave(v, N, Nt, r)
+y = initial_wave_profile(y, N, r)
+y = propagate_wave(y, N, Nt, r)
 
 def animate_wave(u_matrix):
     '''
@@ -52,6 +69,9 @@ def animate_wave(u_matrix):
     N_t, N_x = u_matrix.shape
     x = np.linspace(0, 1, N_x)
 
+    step = 5
+    frame_indices = np.arange(0, N_t, step)
+
     fig, ax = plt.subplots()
     line, = ax.plot(x, u_matrix[0])
 
@@ -59,29 +79,63 @@ def animate_wave(u_matrix):
     ax.set_xlim(x.min(), x.max())
     ax.set_ylim(u_matrix.min(), u_matrix.max())
 
-    def update(t):
-        line.set_ydata(u_matrix[t*5]) # make animation faster by *5
+    # Colormap
+    cmap = plt.get_cmap('plasma')
+
+    # Colorbar (shows time)
+    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=plt.gca())
+    cbar.set_label('Time (s)')
+
+    def update(frame_idx):
+        t = frame_idx * dt
+        line.set_ydata(u_matrix[frame_idx]) # make animation faster by *5\
+        line.set_color(cmap(t))
         return line,
 
     ani = FuncAnimation(
         fig,
         update,
-        frames=N_t,
+        frames=frame_indices,
         interval=50,
         blit=True
     )
     plt.show()
 
+def plot_wave(u, eq):
+    cmap = plt.get_cmap('plasma', Nt)
+    for i in range(0, Nt):
+        t = i * dt
+        colour = cmap(i)
+        plt.plot(x, u[i, :], color = colour)
+
+    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=plt.gca())
+    cbar.set_label('Time (s)')
+
+    plt.xlabel("x")
+    plt.ylabel(f"u(x,t) {eq}")
+    plt.title("Wave evolution")
+    plt.show()
+
 # plot initial, mid, final
 plt.plot(x, u[0, :], label="t = 0")
-plt.plot(x, u[Nt//2, :], label=f"t = {Nt//2 * dt:.3f}")
-plt.plot(x, u[-1, :], label=f"t = {T}")
+plt.plot(x, u[1, :], label=f"t = 0.001")
+plt.plot(x, u[2, :], label=f"t = 0.002")
 plt.legend()
 plt.xlabel("x")
 plt.ylabel("u(x,t)")
 plt.title("Wave evolution")
 plt.show()
 
+plot_wave(u, 'sin(2πx)')
+plot_wave(v, 'sin(5πx)')
+plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0')
+
 animate_wave(u)
+animate_wave(v)
+animate_wave(y)
 
 
