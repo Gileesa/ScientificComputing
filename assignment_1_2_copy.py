@@ -5,6 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
 
 x_max = 1 # max x
 y_max = 1 # max y
@@ -13,13 +14,13 @@ N = 100 # number of x and y steps
 dx = x_max / N # x-step of simulation
 dy = dx # y-step of simulation
 t_max = 100 # max time of simulation
-D = 0.00005 # diffusion coeff.
+D = 0.0001 # diffusion coeff.
 
 N_t = 1000 # number of time steps
 dt = t_max / N_t # time step of simulation
 
 
-# two dimensional, but only depends on y because of symmetry
+# two dimensional
 def one_step_2d(matrix):
     '''One diffusion step in the 2D diffusion simulation.
     Periodic boundaries on x.
@@ -85,7 +86,7 @@ def create_animation(matrices_over_time):
     - matrices_over_time: list of matrices, each matrix representing 1 timestep.
     '''
 
-    animation = plt.figure()
+    fig = plt.figure()
 
     color_scale = plt.pcolormesh(
         matrices_over_time[0],
@@ -99,16 +100,61 @@ def create_animation(matrices_over_time):
         color_scale.set_array(matrices_over_time[i].ravel())
         return color_scale,
 
-    anim = FuncAnimation(animation, step, frames=len(matrices_over_time), interval=50, blit=True)
+    anim = FuncAnimation(fig, step, frames=len(matrices_over_time), interval=50, blit=True)
     plt.show()
 
 
+def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
+    ''' 
+    Runs diffusion simulation and creates animation for it.
+    
+    Params:
+    - current_matrix: the initial conditions (initial matrix)
+    - N_t: the number of time steps
+    '''
+
+    y = np.linspace(0, y_max, N)
+    fig, ax = plt.subplots()
+
+    selected = [0, 10, 50, 200, 500, len(matrix_simulation) - 1]
+    for n in selected:
+        ax.plot(y, matrix_simulation[n], label=f"t = {n*dt:.1f}", linewidth=1)
+
+    line, = ax.plot(y, matrix_simulation[0][:,0])
+   
+    ax.set_ylim(0, 1)
+    ax.set_xlabel('y')
+    ax.set_title('Diffusion over time c(x,y,t)')
+
+    def update(frame):
+        line.set_ydata(matrix_simulation[frame][:,0])
+        ax.set_title(f'Diffusion over time c(x,y,t) at time t={frame*dt:.2f} seconds')
+        return line,
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=len(matrix_simulation),
+        interval=50,
+        blit=True
+    )
+    ani.save(
+        filename,
+        writer="pillow",
+        fps = fps
+    )
+
+    plt.close(fig)
+    plt.show()
+
 # set up initial matrix
 first_matrix = np.zeros((N,N))
-first_matrix[-1, :] = np.ones(N)
+first_matrix[0, :] = 0
+first_matrix[-1, :] = 1
 
 # run simulation
 diffusion_over_time = run_diffusion(first_matrix, N_t)
 print(' number of time steps: ', len(diffusion_over_time))
+animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
 create_animation(diffusion_over_time)
 
