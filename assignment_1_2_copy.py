@@ -147,6 +147,49 @@ def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
     plt.close(fig)
     plt.show()
 
+
+# animation for diffusion over time Question F
+
+def diffusion(concentration_over_time):
+    ''' 
+    Runs diffusion simulation and creates animation for it.
+    
+    Params:
+    - current_matrix: the initial conditions (initial matrix)
+    - N_t: the number of time steps
+    '''
+    times = [0, 0.001, 0.01, 0.1, 1.0]
+    frame_indices = []
+
+    for t in times:
+        frame = int(t/dt)
+
+        if frame >= len(concentration_over_time):
+            frame = len(concentration_over_time) - 1
+        frame_indices.append(frame)
+
+    x = np.linspace(0, x_max, N)
+    y = np.linspace(0, y_max, N)
+    fig, axes = plt.subplots(1, len(times), figsize=(15, 3))
+    shared_mappable = None
+    idx = 0
+    for ax in axes:
+        concentration_fields = concentration_over_time[frame_indices[idx]]
+        shared_mappable = ax.imshow(
+            concentration_fields,
+            vmin=0,
+            vmax=1,
+            origin='lower'
+        )
+    
+        ax.set_title(f't = {times[idx]:.3f} seconds')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        idx += 1
+    fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
+    plt.savefig("diffusion_over_time.png")
+    plt.show()
+
 # set up initial matrix
 first_matrix = np.zeros((N,N))
 first_matrix[0, :] = 0
@@ -157,4 +200,4 @@ diffusion_over_time = run_diffusion(first_matrix, N_t)
 print(' number of time steps: ', len(diffusion_over_time))
 animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
 create_animation(diffusion_over_time)
-
+diffusion(diffusion_over_time)
