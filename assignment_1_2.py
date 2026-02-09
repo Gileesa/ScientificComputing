@@ -88,8 +88,8 @@ def create_animation(matrices_over_time):
 
     color_scale = plt.pcolormesh(
         matrices_over_time[0],
-        vmin=0, # min diffusion
-        vmax=1, # max diffusion
+        vmin=0, # min heat
+        vmax=1, # max heat
         shading="auto"
     )
     plt.colorbar()
@@ -110,7 +110,7 @@ diffusion_over_time = include_x(diffusion_matrix, N, N_t)
 
 print(' number of time steps: ', len(diffusion_over_time))
 print(' shape of data of each time step: ', diffusion_over_time[0].shape)
-print(' shape of data of each time step: ', diffusion_over_time[-1])
+print(' data of each time step: ', diffusion_over_time[-1])
 
 create_animation(diffusion_over_time)
 
