@@ -33,9 +33,9 @@ def one_step(row):
     # We don't calculate x-values because across the whole x-axis, these will be the same
     # for the same value of y.
 
-    alpha = D * dt / dx**2
-    if alpha > 0.5:
-        raise ValueError("Unstable constant: alpha value must be ≤ 0.5. Current value: ", alpha)
+    alpha = 4*D * dt / dx**2
+    if alpha >= 1:
+        raise ValueError("Unstable constant: alpha value must be ≤ 1. Current value: ", alpha)
     
     next_row = [row[i] + alpha * (-2*row[i] + row[i+1] + row[i-1]) for i in range(1,len(row)-1)] #i.e without bounds
 
