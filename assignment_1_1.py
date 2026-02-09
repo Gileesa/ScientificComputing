@@ -1,6 +1,7 @@
 # Wave Equation
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 
 L = 1 # length of the string
@@ -64,6 +65,37 @@ u = propagate_wave(u, N, Nt, r)
 
 # propagate_wave(A)
 
+def animate_wave(u_matrix):
+    '''
+    Function that animates a wave in 2D
+    Assumes each row in the u_matrix is one time step
+
+    Params:
+    - u_matrix: matrix containing wave over time. Each row represents one time step
+    '''
+    N_t, N_x = u_matrix.shape
+    x = np.linspace(0, 1, N_x)
+
+    fig, ax = plt.subplots()
+    line, = ax.plot(x, u_matrix[0])
+
+    ax.set_xlim(x.min(), x.max())
+    ax.set_ylim(u_matrix.min(), u_matrix.max())
+
+    def update(t):
+        line.set_ydata(u_matrix[t*5]) #make animation faster
+        return line,
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=N_t,
+        interval=50,
+        blit=True
+    )
+    plt.show()
+
+
 # plot initial, mid, final
 plt.plot(x, u[0, :], label="t = 0")
 plt.plot(x, u[Nt//2, :], label=f"t = {Nt//2 * dt:.3f}")
@@ -73,5 +105,7 @@ plt.xlabel("x")
 plt.ylabel("u(x,t)")
 plt.title("Wave evolution")
 plt.show()
+
+animate_wave(u)
 
 
