@@ -1,7 +1,7 @@
 # 
 # Part E (simulation part)
 # 
-
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -103,7 +103,7 @@ def create_animation(matrices_over_time):
     anim = FuncAnimation(fig, step, frames=len(matrices_over_time), interval=50, blit=True)
     plt.show()
 
-
+# animation for diffusion over time
 def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
     ''' 
     Runs diffusion simulation and creates animation for it.
@@ -147,16 +147,82 @@ def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
     plt.close(fig)
     plt.show()
 
+# Part E analytical solution
+def analytical_solution(y_array, t, D):
+    ''' 
+    Analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1.
+    
+    Params:
+    - y: the y values at which to evaluate the solution
+    - t: the time at which to evaluate the solution
+    - D: the diffusion coefficient
 
-# animation for diffusion over time Question F
+    Returns:
+    - c: the concentration values at each y for time t
+    '''
+    if t <= 0:
+        return np.zeros_like(y_array)
+    
+    denominator = 2 * np.sqrt(D * t)
+    profile = np.zeros_like(y_array)
+
+    for j in range(len(y_array)):
+        # compute the series sum for the analytical solution
+        y = float(y_array[j])
+        series_sum = 0
+    
+        for i in range(1, 1000):
+            term_left = math.erfc((1 - y + 2 * i) / denominator)
+            term_right = math.erfc((1 + y + 2 * i) / denominator)
+            equation = term_left - term_right
+            series_sum += equation
+
+            if abs(equation) < 1e-10: # break if the term is small enough to not contribute to the sum
+                break
+        profile[j] = series_sum
+    return profile
+
+# Plot Question E
+
+def plot_analytical_solution(concentration_over_time):
+    ''' 
+    Plots the analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1 for different times.
+    
+    Params:
+    - concentration_over_time: list of concentration fields over time
+    '''
+    y = np.linspace(0, y_max, N)
+    times = [0, 0.001, 0.01, 0.1, 1.0]
+   
+    for time in times:
+        frame = int(time/dt)
+
+        if frame >= len(concentration_over_time):
+            frame = len(concentration_over_time) - 1
+        
+        concentration_field = concentration_over_time[frame]
+        numerical_profile = concentration_field[:,0]
+        analytical_profile = analytical_solution(y, time, D)
+        plt.figure()
+        plt.plot(y, numerical_profile, label=f"Numerical t={time:.3f} s", linestyle='dashed')
+        plt.plot(y, analytical_profile, label=f"Analytical t={time:.3f} s", linestyle='solid')
+    
+        plt.xlabel('y')
+        plt.ylabel('c(x,y,t)')
+        plt.title('Analytical Solution of Diffusion over time')
+        plt.legend()
+        plt.savefig(f"analytical_solution_t{time:.3f}.png")
+        plt.show()
+
+
+# Question F
 
 def diffusion(concentration_over_time):
     ''' 
     Runs diffusion simulation and creates animation for it.
     
     Params:
-    - current_matrix: the initial conditions (initial matrix)
-    - N_t: the number of time steps
+    - concentration_over_time: list of concentration fields over time
     '''
     times = [0, 0.001, 0.01, 0.1, 1.0]
     frame_indices = []
@@ -186,6 +252,7 @@ def diffusion(concentration_over_time):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         idx += 1
+
     fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
     plt.savefig("diffusion_over_time.png")
     plt.show()
@@ -201,3 +268,4 @@ print(' number of time steps: ', len(diffusion_over_time))
 animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
 create_animation(diffusion_over_time)
 diffusion(diffusion_over_time)
+plot_analytical_solution(diffusion_over_time)
