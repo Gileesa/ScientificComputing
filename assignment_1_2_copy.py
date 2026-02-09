@@ -171,7 +171,7 @@ def analytical_solution(y_array, t, D):
         y = float(y_array[j])
         series_sum = 0
     
-        for i in range(1, 1000):
+        for i in range(0, 1000):
             term_left = math.erfc((1 - y + 2 * i) / denominator)
             term_right = math.erfc((1 + y + 2 * i) / denominator)
             equation = term_left - term_right
