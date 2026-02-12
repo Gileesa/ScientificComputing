@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib as mpl
 
+# Question A
+# Discretize the wave equation, and write it in a form suitable for implementing in a computer program. 
+# Assume that the boundaries are fixed, Ψ(x =0,t) = 0, Ψ(x = L,t) = 0. 
+# L is the length of the string. 
+# Take L = 1 for simplicity.
+# Divide the string in N intervals, so that the interval length is ∆x = L/N. 
+# Also consider the boundary cases. 
+# If you use Euler’s method, you need to use both Ψ(x,t) and Ψt(x,t) as variables.
+# Or use the stepping method from the lectures, which uses Ψ at the two most recent time points to calculate it at the next one.
 
 L = 1 # length of the string
 c = 1 # wave speed (m/s)
@@ -58,6 +67,7 @@ v = propagate_wave(v, N, Nt, r)
 y = initial_wave_profile(y, N, r)
 y = propagate_wave(y, N, Nt, r)
 
+# Question C
 def animate_wave(u_matrix):
     '''
     Function that animates a wave in 2D
@@ -103,6 +113,7 @@ def animate_wave(u_matrix):
     )
     plt.show()
 
+# Question B
 def plot_wave(u, eq):
     cmap = plt.get_cmap('plasma', Nt)
     for i in range(0, Nt):
@@ -130,10 +141,12 @@ plt.ylabel("u(x,t)")
 plt.title("Wave evolution")
 plt.show()
 
+# Question B
 plot_wave(u, 'sin(2πx)')
 plot_wave(v, 'sin(5πx)')
 plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0')
 
+# Question C
 animate_wave(u)
 animate_wave(v)
 animate_wave(y)

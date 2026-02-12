@@ -1,6 +1,3 @@
-# 
-# Part E (simulation part)
-# 
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +19,7 @@ dt = 0.25 * dx**2 / D # time step of simulation, set to be stable (D*dt/dx^2 <= 
 N_t = int(t_max/dt) # number of time steps 1 / (0.25 * 0.004 /1) = 1000 time steps
 
 
-# two dimensional
+# Question D
 def one_step_2d(matrix):
     '''One diffusion step in the 2D diffusion simulation.
     Periodic boundaries on x.
@@ -149,7 +146,7 @@ def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
     plt.close(fig)
     plt.show()
 
-# Part E analytical solution
+# Part E 
 def analytical_solution(y_array, t, D):
     ''' 
     Analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1.
@@ -188,8 +185,7 @@ def analytical_solution(y_array, t, D):
         profile[j] = series_sum
     return profile
 
-# Plot Question E -
-
+# Plot Question E 
 def plot_analytical_solution(concentration_over_time):
     ''' 
     Plots the analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1 for different times.
@@ -222,7 +218,6 @@ def plot_analytical_solution(concentration_over_time):
 
 
 # Question F
-
 def diffusion(concentration_over_time):
     ''' 
     Runs diffusion simulation and creates animation for it.
