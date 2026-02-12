@@ -8,16 +8,17 @@ from matplotlib.animation import FuncAnimation
 
 x_max = 1 # max x
 y_max = 1 # max y
-N = 100 # number of x and y steps
+N = 50 # number of x and y steps
 
-dx = x_max / N # x-step of simulation
+dx = x_max / N # x-step of simulation 1/100 -> 0.05
 dy = dx # y-step of simulation
-t_max = 100 # max time of simulation
-D = 0.00005 # diffusion coeff.
+t_max = 1 # max time of simulation
+D = 1 # diffusion coeff.
 
-N_t = 1000 # number of time steps
-dt = t_max / N_t # time step of simulation
 
+#dt = t_max / N_t # time step of simulation
+dt = 0.25 * dx**2 / D # time step of simulation, set to be stable (D*dt/dx^2 <= 0.25)
+N_t = int(t_max/dt) # number of time steps
 
 # two dimensional, but only depends on y because of symmetry
 def one_step_2d(matrix):
@@ -99,7 +100,7 @@ def create_animation(matrices_over_time):
         color_scale.set_array(matrices_over_time[i].ravel())
         return color_scale,
 
-    anim = FuncAnimation(animation, step, frames=len(matrices_over_time), interval=50, blit=True)
+    anim = FuncAnimation(animation, step, frames=len(matrices_over_time), interval=10, blit=True)
     plt.show()
 
 

@@ -9,15 +9,17 @@ import matplotlib.animation as animation
 
 x_max = 1 # max x
 y_max = 1 # max y
-N = 100 # number of x and y steps
+N = 50 # number of x and y steps 
 
-dx = x_max / N # x-step of simulation
+dx = x_max / N # x-step of simulation 1/50 -> 0.02
 dy = dx # y-step of simulation
-t_max = 100 # max time of simulation
-D = 0.0001 # diffusion coeff.
+t_max = 1 # max time of simulation
+D = 1 # diffusion coeff.
 
-N_t = 1000 # number of time steps
-dt = t_max / N_t # time step of simulation
+
+#dt = t_max / N_t # time step of simulation
+dt = 0.25 * dx**2 / D # time step of simulation, set to be stable (D*dt/dx^2 <= 0.25)
+N_t = int(t_max/dt) # number of time steps 1 / (0.25 * 0.004 /1) = 1000 time steps
 
 
 # two dimensional
@@ -118,7 +120,7 @@ def animate_diffusion(matrix_simulation, filename = "diffusion.mp4", fps=20):
 
     selected = [0, 10, 50, 200, 500, len(matrix_simulation) - 1]
     for n in selected:
-        ax.plot(y, matrix_simulation[n], label=f"t = {n*dt:.1f}", linewidth=1)
+        ax.plot(y, matrix_simulation[n][:,0], label=f"t = {n*dt:.1f}", linewidth=1)
 
     line, = ax.plot(y, matrix_simulation[0][:,0])
    
@@ -160,15 +162,19 @@ def analytical_solution(y_array, t, D):
     Returns:
     - c: the concentration values at each y for time t
     '''
+    y_array = np.array(y_array)
+
     if t <= 0:
-        return np.zeros_like(y_array)
+        output = np.zeros_like(y_array)
+        output[-1] = 1 # set boundary condition at t=0
+        output[0] = 0 # set boundary condition at t=0
+        return output
     
     denominator = 2 * np.sqrt(D * t)
     profile = np.zeros_like(y_array)
 
-    for j in range(len(y_array)):
+    for j, y in enumerate(y_array):
         # compute the series sum for the analytical solution
-        y = float(y_array[j])
         series_sum = 0
     
         for i in range(0, 1000):
@@ -182,7 +188,7 @@ def analytical_solution(y_array, t, D):
         profile[j] = series_sum
     return profile
 
-# Plot Question E
+# Plot Question E -
 
 def plot_analytical_solution(concentration_over_time):
     ''' 
@@ -195,7 +201,7 @@ def plot_analytical_solution(concentration_over_time):
     times = [0, 0.001, 0.01, 0.1, 1.0]
    
     for time in times:
-        frame = int(time/dt)
+        frame = int((round(time/dt)))
 
         if frame >= len(concentration_over_time):
             frame = len(concentration_over_time) - 1
@@ -238,11 +244,12 @@ def diffusion(concentration_over_time):
     y = np.linspace(0, y_max, N)
     fig, axes = plt.subplots(1, len(times), figsize=(15, 3))
     shared_mappable = None
-    idx = 0
-    for ax in axes:
+    
+    for idx, ax in enumerate(axes):
         concentration_fields = concentration_over_time[frame_indices[idx]]
         shared_mappable = ax.imshow(
             concentration_fields,
+            extent=[0, 1, 0, 1], 
             vmin=0,
             vmax=1,
             origin='lower'
@@ -251,9 +258,12 @@ def diffusion(concentration_over_time):
         ax.set_title(f't = {times[idx]:.3f} seconds')
         ax.set_xlabel('x')
         ax.set_ylabel('y')
-        idx += 1
+        ax.set_xlim(0, 1)       
+        ax.set_ylim(0, 1)
 
     fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
+    
+    
     plt.savefig("diffusion_over_time.png")
     plt.show()
 
@@ -265,7 +275,7 @@ first_matrix[-1, :] = 1
 # run simulation
 diffusion_over_time = run_diffusion(first_matrix, N_t)
 print(' number of time steps: ', len(diffusion_over_time))
-animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
-create_animation(diffusion_over_time)
+#animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
+#create_animation(diffusion_over_time)
 diffusion(diffusion_over_time)
 plot_analytical_solution(diffusion_over_time)
