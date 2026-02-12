@@ -130,7 +130,7 @@ c_numerical_gauss = c_gauss
 error = np.max(np.abs(c_numerical_gauss.mean(axis=1) - c_analytical))
 print(f"Max error for Gauss-Seidel method: {error}")
 
-
+# Verification of the results by plotting the numerical solutions and the analytical solution on the same graph
 y = np.linspace(0, 1, Ny)
 plt.plot(y, c_jacobi.mean(axis=1), label="Jacobi")
 plt.plot(y, c_gauss.mean(axis=1), label="Gauss-Seidel")
@@ -141,3 +141,16 @@ plt.ylabel("c")
 plt.savefig("jacobi_gauss_comparison.png")
 plt.show()
 
+# Question I 
+# Show how the convergence measure δ in eq. (14) 
+# depends on the number of iterations k for each of the methods. 
+# A log-lin plot may be suitable. 
+# For SOR, choose a few representative values for ω.
+
+plt.semilogy(delta_list, label="Jacobi")
+plt.semilogy(delta_list_gauss, label="Gauss-Seidel")
+plt.xlabel("Iteration k")
+plt.ylabel("Delta")
+plt.legend()
+plt.savefig("convergence_comparison.png")
+plt.show()
