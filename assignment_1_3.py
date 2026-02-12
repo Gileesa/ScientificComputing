@@ -3,7 +3,6 @@ import numpy as np
 
 # Question H 
 # Implement the Jacobi iteration, the Gauss-Seidel method and SOR.
-# Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
 
 # Implement the Jacobi iteration
 def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
@@ -37,8 +36,8 @@ def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
                 c_new[j, i] = 0.25 * (c_old[j + 1, i] + c_old[j - 1, i] + c_old[j, right] + c_old[j, left])
         
                 # if k == 49 and j == 2 and i == 3:
-        print(f"\nIteration {k}")
-        print(c_new)
+        # print(f"\nIteration {k}")
+        # print(c_new)
 
         c_new[0, :] = 0 # set boundary condition
         c_new[-1, :] = 1 # set boundary condition
@@ -47,7 +46,7 @@ def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
         delta_list.append(delta)
 
         if delta < epsilon:
-            print(f"Converged after {k} iterations.")
+            print(f"Jacobi Converged after {k} iterations.")
             return c_new, np.array(delta_list)
         
         c_old, c_new = c_new, c_old
@@ -70,8 +69,8 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
     """
     Ny, Nx = c.shape
 
-    c_old[0, :] = 0 # set boundary condition
-    c_old[-1, :] = 1 # set boundary condition
+    c[0, :] = 0 # set boundary condition
+    c[-1, :] = 1 # set boundary condition
 
     delta_list = []
 
@@ -85,8 +84,8 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
             
                 c[j, i] = 0.25 * (c[j + 1, i] + c[j - 1, i] + c[j, right] + c[j, left])
         
-        print(f"\nIteration {k}")
-        print(c)
+        # print(f"\nIteration {k}")
+        # print(c)
 
         c[0, :] = 0 # set boundary condition
         c[-1, :] = 1 # set boundary condition
@@ -95,7 +94,7 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
         delta_list.append(delta)
 
         if delta < epsilon:
-            print(f"Converged after {k} iterations.")
+            print(f"Gauss Seidel Converged after {k} iterations.")
             return c, np.array(delta_list)
 
     return c, np.array(delta_list)
@@ -103,9 +102,26 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
 # Try N = 50
 N = 50 
 c_initial = np.zeros((N + 1, N + 1))
-c_jacobi, delta_list = jacobi_iteration(c_initial, 5000)
-c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial, 5000)
+c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
+c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
 
-  
-      
-    
+c_jacobi, delta_list = jacobi_iteration(c_initial, 5000)
+c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial, 2500)
+
+# H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
+Ny, Nx = c_jacobi.shape
+y = np.linspace(0, 1, Ny)
+c_analytical = y
+c_numerical_jacobi = c_jacobi[:, 0]
+error = np.max(np.abs(c_numerical_jacobi - c_analytical))
+print(f"Max error for Jacobi method: {error}")
+
+
+# H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
+Ny, Nx = c_gauss.shape
+y = np.linspace(0, 1, Ny)
+c_analytical = y
+c_numerical_gauss = c_gauss[:, 0]
+error = np.max(np.abs(c_numerical_gauss - c_analytical))
+print(f"Max error for Gauss-Seidel method: {error}")
+
