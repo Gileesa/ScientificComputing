@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Question H 
 # Implement the Jacobi iteration, the Gauss-Seidel method and SOR.
@@ -27,6 +28,8 @@ def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
     delta_list = []
 
     for k in range(max_iteration):
+        c_old[0, :] = 0 # set boundary condition
+        c_old[-1, :] = 1 # set boundary condition
 
         for j in range(1, Ny-1):
             for i in range(Nx):
@@ -75,6 +78,8 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
     delta_list = []
 
     for k in range(max_iteration):
+        c[0, :] = 0 # set boundary condition
+        c[-1, :] = 1 # set boundary condition
         c_old = c.copy()
 
         for j in range(1, Ny-1):
@@ -94,7 +99,7 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
         delta_list.append(delta)
 
         if delta < epsilon:
-            print(f"Gauss Seidel Converged after {k} iterations.")
+            print(f"Gauss Seidel Converged after {k + 1} iterations.")
             return c, np.array(delta_list)
 
     return c, np.array(delta_list)
@@ -105,15 +110,15 @@ c_initial = np.zeros((N + 1, N + 1))
 c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
 c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
 
-c_jacobi, delta_list = jacobi_iteration(c_initial, 5000)
-c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial, 2500)
+c_jacobi, delta_list = jacobi_iteration(c_initial.copy(), 5000)
+c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial.copy(), 2500)
 
 # H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
 Ny, Nx = c_jacobi.shape
 y = np.linspace(0, 1, Ny)
 c_analytical = y
-c_numerical_jacobi = c_jacobi[:, 0]
-error = np.max(np.abs(c_numerical_jacobi - c_analytical))
+c_numerical_jacobi = c_jacobi
+error = np.max(np.abs(c_numerical_jacobi.mean(axis=1) - c_analytical))
 print(f"Max error for Jacobi method: {error}")
 
 
@@ -121,7 +126,18 @@ print(f"Max error for Jacobi method: {error}")
 Ny, Nx = c_gauss.shape
 y = np.linspace(0, 1, Ny)
 c_analytical = y
-c_numerical_gauss = c_gauss[:, 0]
-error = np.max(np.abs(c_numerical_gauss - c_analytical))
+c_numerical_gauss = c_gauss
+error = np.max(np.abs(c_numerical_gauss.mean(axis=1) - c_analytical))
 print(f"Max error for Gauss-Seidel method: {error}")
+
+
+y = np.linspace(0, 1, Ny)
+plt.plot(y, c_jacobi.mean(axis=1), label="Jacobi")
+plt.plot(y, c_gauss.mean(axis=1), label="Gauss-Seidel")
+plt.plot(y, y, "--", label="Analytical c=y")
+plt.legend()
+plt.xlabel("y")
+plt.ylabel("c")
+plt.savefig("jacobi_gauss_comparison.png")
+plt.show()
 
