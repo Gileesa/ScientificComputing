@@ -104,6 +104,59 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
 
     return c, np.array(delta_list)
 
+
+# Implement the SOR iteration
+
+def sor_iteration(c, omega, max_iteration, epsilon = 10**(-5)):
+    """
+    This function performs the SOR iteration for solving the 2D Laplace equation with given boundary conditions.
+    params:
+    c: the initial matrix with boundary conditions set
+    N: the number of x and y steps
+    epsioln: the convergence criterion for the iteration
+    returns:
+    c: the matrix after convergence    
+
+    array[y, x] -> array[row, column] -> array[j, i]
+
+    flow of the iteration:
+    c = entire matrix at iteration k
+    c_old = entire matrix at iteration k-1
+    neighbour = the average of the 4 neighbours of c[j, i]
+    c = entire matrix at iteration k + 1
+    """
+    Ny, Nx = c.shape
+    
+    c[0, :] = 0 # set boundary condition
+    c[-1, :] = 1 # set boundary condition
+    neighbour = np.zeros_like(c)
+    delta_list = []
+
+    for k in range(max_iteration):
+        c[0, :] = 0 # set boundary condition
+        c[-1, :] = 1 # set boundary condition
+        c_old = c.copy()
+
+        for j in range(1, Ny-1):
+            for i in range(Nx):
+                right = (i + 1) % Nx # periodic boundary condition 49 + 1 = 50 % 50 = 0
+                left = (i - 1) % Nx # periodic boundary condition 0 - 1 = -1 % 50 = 49
+            
+                neighbour[j, i] = 0.25 * (c[j + 1, i] + c[j - 1, i] + c[j, right] + c[j, left])
+                c[j, i] = (1 - omega) * c_old[j, i] + omega * neighbour[j, i]
+    
+        c[0, :] = 0 # set boundary condition
+        c[-1, :] = 1 # set boundary condition
+
+        delta = np.max(np.abs(c - c_old)) 
+        delta_list.append(delta)
+
+        if delta < epsilon:
+            print(f"SOR omega={omega} converged after {k + 1} iterations.")
+            return c, np.array(delta_list)
+
+    return c, np.array(delta_list)
+
 # Try N = 50
 N = 50 
 c_initial = np.zeros((N + 1, N + 1))
@@ -112,6 +165,7 @@ c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
 
 c_jacobi, delta_list = jacobi_iteration(c_initial.copy(), 5000)
 c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial.copy(), 2500)
+c_sor, delta_list_sor = sor_iteration(c_initial.copy(), omega=1.85, max_iteration=500)
 
 # H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
 Ny, Nx = c_jacobi.shape
@@ -130,15 +184,25 @@ c_numerical_gauss = c_gauss
 error = np.max(np.abs(c_numerical_gauss.mean(axis=1) - c_analytical))
 print(f"Max error for Gauss-Seidel method: {error}")
 
+
+# H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
+Ny, Nx = c_sor.shape
+y = np.linspace(0, 1, Ny)
+c_analytical = y
+c_numerical_sor = c_sor
+error = np.max(np.abs(c_numerical_sor.mean(axis=1) - c_analytical))
+print(f"Max error for SOR method: {error}")
+
 # Verification of the results by plotting the numerical solutions and the analytical solution on the same graph
 y = np.linspace(0, 1, Ny)
 plt.plot(y, c_jacobi.mean(axis=1), label="Jacobi")
 plt.plot(y, c_gauss.mean(axis=1), label="Gauss-Seidel")
+plt.plot(y, c_sor.mean(axis=1), label="SOR")
 plt.plot(y, y, "--", label="Analytical c=y")
 plt.legend()
 plt.xlabel("y")
 plt.ylabel("c")
-plt.savefig("jacobi_gauss_comparison.png")
+plt.savefig("jacobi_gauss_sor_comparison.png")
 plt.show()
 
 # Question I 
@@ -149,6 +213,7 @@ plt.show()
 
 plt.semilogy(delta_list, label="Jacobi")
 plt.semilogy(delta_list_gauss, label="Gauss-Seidel")
+plt.semilogy(delta_list_sor, label="SOR omega=1.85")
 plt.xlabel("Iteration k")
 plt.ylabel("Delta")
 plt.legend()
