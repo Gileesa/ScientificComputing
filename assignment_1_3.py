@@ -9,12 +9,14 @@ import matplotlib.pyplot as plt
 def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
     """
     This function performs the Jacobi iteration for solving the 2D Laplace equation with given boundary conditions.
+
     params:
-    c: the initial matrix with boundary conditions set
-    N: the number of x and y steps
-    epsioln: the convergence criterion for the iteration
+    - c: the initial matrix with boundary conditions set
+    - N: the number of x and y steps
+    - epsioln: the convergence criterion for the iteration
+
     returns:
-    c: the matrix after convergence    
+    - c: the matrix after convergence    
 
     array[y, x] -> array[row, column] -> array[j, i]
     """
@@ -61,12 +63,14 @@ def jacobi_iteration(c, max_iteration, epsilon = 10**(-5)):
 def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
     """
     This function performs the Gauss-Seidel iteration for solving the 2D Laplace equation with given boundary conditions.
+
     params:
-    c: the initial matrix with boundary conditions set
-    N: the number of x and y steps
-    epsioln: the convergence criterion for the iteration
+    - c: the initial matrix with boundary conditions set
+    - N: the number of x and y steps
+    - epsilon: the convergence criterion for the iteration
+    
     returns:
-    c: the matrix after convergence    
+    - c: the matrix after convergence    
 
     array[y, x] -> array[row, column] -> array[j, i]
     """
@@ -110,20 +114,21 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
 def sor_iteration(c, omega, max_iteration, epsilon = 10**(-5)):
     """
     This function performs the SOR iteration for solving the 2D Laplace equation with given boundary conditions.
+
     params:
-    c: the initial matrix with boundary conditions set
-    N: the number of x and y steps
-    epsioln: the convergence criterion for the iteration
+    - c: the initial matrix with boundary conditions set
+    - N: the number of x and y steps
+    - epsilon: the convergence criterion for the iteration
     returns:
-    c: the matrix after convergence    
+    - c: the matrix after convergence    
 
     array[y, x] -> array[row, column] -> array[j, i]
 
     flow of the iteration:
-    c = entire matrix at iteration k
-    c_old = entire matrix at iteration k-1
-    neighbour = the average of the 4 neighbours of c[j, i]
-    c = entire matrix at iteration k + 1
+    - c = entire matrix at iteration k
+    - c_old = entire matrix at iteration k-1
+    - neighbour = the average of the 4 neighbours of c[j, i]
+    - c = entire matrix at iteration k + 1
     """
     Ny, Nx = c.shape
     
