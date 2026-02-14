@@ -17,7 +17,7 @@ import matplotlib as mpl
 L = 1 # length of the string
 c = 1 # wave speed (m/s)
 
-N = 100 # number of spatial points
+N = 1000 # number of spatial points
 dx = L / N # spatial step size
 x = np.linspace(0, L, N + 1)
 T = 1  # total time of simulation
