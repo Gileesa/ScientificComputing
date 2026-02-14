@@ -44,6 +44,28 @@ y[0, :] = np.where((x > (1/5)) & (x < (2/5)), np.sin(5 * np.pi * x), 0.0)
 y[0, 0] = 0.0
 y[0, -1] = 0.0
 
+def initial_wave_profile_cond(u, N, r):
+    for i in range(1, N):
+        # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
+        if x[i] <= (1/5) or x[i] >= (2/5):
+            u[1, i] = 0
+        else:
+            u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
+    u[1, 0] = 0.0
+    u[1, -1] = 0.0
+    return u
+
+def propagate_wave_cond(u, N, Nt, r):
+    for n in range(1, Nt):
+        for i in range(1, N):
+            if x[i] <= (1/5) or x[i] >= (2/5):
+                u[1, i] = 0
+            else:
+                u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
+        u[n+1, 0] = 0.0
+        u[n+1, -1] = 0.0
+    return u 
+
 def initial_wave_profile(u, N, r):
     for i in range(1, N):
         # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
@@ -64,8 +86,8 @@ u = initial_wave_profile(u, N, r)
 u = propagate_wave(u, N, Nt, r)
 v = initial_wave_profile(v, N, r)
 v = propagate_wave(v, N, Nt, r)
-y = initial_wave_profile(y, N, r)
-y = propagate_wave(y, N, Nt, r)
+y = initial_wave_profile_cond(y, N, r)
+y = propagate_wave_cond(y, N, Nt, r)
 
 # Question C
 def animate_wave(u_matrix):
@@ -130,16 +152,6 @@ def plot_wave(u, eq):
     plt.ylabel(f"u(x,t) {eq}")
     plt.title("Wave evolution")
     plt.show()
-
-# plot initial, mid, final
-plt.plot(x, u[0, :], label="t = 0")
-plt.plot(x, u[1, :], label=f"t = 0.001")
-plt.plot(x, u[2, :], label=f"t = 0.002")
-plt.legend()
-plt.xlabel("x")
-plt.ylabel("u(x,t)")
-plt.title("Wave evolution")
-plt.show()
 
 # Question B
 plot_wave(u, 'sin(2πx)')
