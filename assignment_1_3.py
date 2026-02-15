@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 # Question H 
 # Implement the Jacobi iteration, the Gauss-Seidel method and SOR.
@@ -111,7 +112,7 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
 
 # Implement the SOR iteration
 
-def sor_iteration(c, omega, max_iteration, epsilon = 10**(-5)):
+def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5)):
     """
     This function performs the SOR iteration for solving the 2D Laplace equation with given boundary conditions.
 
@@ -144,6 +145,11 @@ def sor_iteration(c, omega, max_iteration, epsilon = 10**(-5)):
 
         for j in range(1, Ny-1):
             for i in range(Nx):
+                if obj_matrix[j, i] == 1:
+                    c[j, i] == 0
+                    continue
+                elif obj_matrix[j, i] == 2:
+                    continue
                 right = (i + 1) % Nx # periodic boundary condition 49 + 1 = 50 % 50 = 0
                 left = (i - 1) % Nx # periodic boundary condition 0 - 1 = -1 % 50 = 49
             
@@ -157,20 +163,67 @@ def sor_iteration(c, omega, max_iteration, epsilon = 10**(-5)):
         delta_list.append(delta)
 
         if delta < epsilon:
-            print(f"SOR omega={omega} converged after {k + 1} iterations.")
-            return c, np.array(delta_list)
+            print(f"SOR omega={omega}, board size={Ny} converged after {k + 1} iterations.")
+            return c, np.array(delta_list), (k + 1)
 
-    return c, np.array(delta_list)
+    return c, np.array(delta_list), (k + 1)
+
+def run_sor_diff_vals():
+    omega_list = np.linspace(1.7, 2, 11, endpoint=False)[1:]
+    N_list = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    k_list = []
+    iter_list_50 = []
+    best_omegas = []
+    for N in N_list:
+        c_initial = np.zeros((N + 1, N + 1))
+        c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
+        c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
+        for omega in omega_list:
+            _, _, k = sor_iteration(c_initial.copy(), omega=omega, max_iteration=900)
+            k_list.append(k)
+            if N == 50:
+                iter_list_50.append(k)
+        max_val = min(k_list)
+        best_omegas.append(omega_list[k_list.index(max_val)])
+        k_list = []
+    return best_omegas, N_list, iter_list_50, omega_list
+
+def create_objects(object_type, N, object_matrix, max_attempts = 100):
+    for _ in range(max_attempts):
+        orientation = np.random.choice([0, 1])
+        i = random.randint(0, N - 1)
+        j = random.randint(0, N - 1)
+        if orientation == 0:
+            if i < N - 1 and object_matrix[i, j] == 0 and object_matrix[i + 1, j] == 0:
+                object_matrix[i, j] == object_type
+                object_matrix[i + 1, j] == object_type
+                return True, object_matrix
+        else: 
+            if j < N - 1 and object_matrix[i, j] == 0 and object_matrix[i, j + 1] == 0:
+                object_matrix[i, j] == object_type
+                object_matrix[i, j + 1] == object_type
+                return True, object_matrix
+    return False, object_matrix
+
+def create_multiple_obj(object_count, object_type, N):
+    object_matrix = np.zeros((N, N))
+    placed_obj = 0
+    while placed_obj < object_count:
+        success, object_matrix = create_objects(object_type, N, object_matrix)
+        if success:
+            placed_obj += 1
+    return object_matrix
+
 
 # Try N = 50
 N = 50 
-c_initial = np.zeros((N + 1, N + 1))
+c_initial = np.zeros((N, N))
 c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
 c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
 
 c_jacobi, delta_list = jacobi_iteration(c_initial.copy(), 5000)
 c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial.copy(), 2500)
-c_sor, delta_list_sor = sor_iteration(c_initial.copy(), omega=1.85, max_iteration=500)
+c_sor, delta_list_sor, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=np.zeros((N, N)), max_iteration=500)
 
 # H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
 Ny, Nx = c_jacobi.shape
@@ -224,3 +277,34 @@ plt.ylabel("Delta")
 plt.legend()
 plt.savefig("convergence_comparison.png")
 plt.show()
+
+#Question J
+#due to run time making the running of this toggle on and off
+#runnging with different N and omega values for plotting seeing the effects
+run_j = False
+if run_j:
+    best_omegas, N_vals, iter_list, omegas = run_sor_diff_vals()
+    print(iter_list)
+    print(best_omegas)
+    print(N_vals)
+    print(omegas)
+    plt.plot(N_vals, best_omegas)
+    plt.xlabel("Different board sizes")
+    plt.ylabel("ω")
+    plt.grid()
+    plt.show()
+
+    plt.plot(omegas, iter_list)
+    plt.xlabel("ω")
+    plt.ylabel("iteration count")
+    plt.grid()
+    plt.show()
+
+#Question K
+N = 50
+obj_mat = create_multiple_obj(1, N, 1)
+c_sor1, delta_list_sor1, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
+obj_mat = create_multiple_obj(2, N, 1)
+c_sor2, delta_list_sor2, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
+obj_mat = create_multiple_obj(3, N, 1)
+c_sor3, delta_list_sor3, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
