@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import random
 
 # Question H 
@@ -112,7 +113,7 @@ def gauss_seidel_iteration(c, max_iteration, epsilon = 10**(-5)):
 
 # Implement the SOR iteration
 
-def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5)):
+def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), save_snap = False):
     """
     This function performs the SOR iteration for solving the 2D Laplace equation with given boundary conditions.
 
@@ -133,10 +134,17 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5)):
     """
     Ny, Nx = c.shape
     
+    for j in range(1, Ny-1):
+        for i in range(Nx):
+            if obj_matrix[j, i] != 0:
+                c[j, i] = 0
+    
+    
     c[0, :] = 0 # set boundary condition
     c[-1, :] = 1 # set boundary condition
     neighbour = np.zeros_like(c)
     delta_list = []
+    c_over_time = []
 
     for k in range(max_iteration):
         c[0, :] = 0 # set boundary condition
@@ -146,14 +154,19 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5)):
         for j in range(1, Ny-1):
             for i in range(Nx):
                 if obj_matrix[j, i] == 1:
-                    c[j, i] == 0
+                    c[j, i] = 0
                     continue
                 elif obj_matrix[j, i] == 2:
                     continue
-                right = (i + 1) % Nx # periodic boundary condition 49 + 1 = 50 % 50 = 0
-                left = (i - 1) % Nx # periodic boundary condition 0 - 1 = -1 % 50 = 49
-            
-                neighbour[j, i] = 0.25 * (c[j + 1, i] + c[j - 1, i] + c[j, right] + c[j, left])
+                right_ = (i + 1) % Nx # periodic boundary condition 49 + 1 = 50 % 50 = 0
+                left_ = (i - 1) % Nx # periodic boundary condition 0 - 1 = -1 % 50 = 49
+
+                right = c[j, right_] if obj_matrix[j, right_] != 2 else c[j, i]
+                left = c[j, left_] if obj_matrix[j, left_] != 2 else c[j, i]
+                up = c[j + 1, i] if obj_matrix[j + 1, i] != 2 else c[j, i]
+                down = c[j - 1, i] if obj_matrix[j - 1, i] != 2 else c[j, i]
+                
+                neighbour[j, i] = 0.25 * (up + down + right + left)
                 c[j, i] = (1 - omega) * c_old[j, i] + omega * neighbour[j, i]
     
         c[0, :] = 0 # set boundary condition
@@ -162,11 +175,14 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5)):
         delta = np.max(np.abs(c - c_old)) 
         delta_list.append(delta)
 
+        if save_snap:
+            c_over_time.append(c.copy())
+
         if delta < epsilon:
             print(f"SOR omega={omega}, board size={Ny} converged after {k + 1} iterations.")
-            return c, np.array(delta_list), (k + 1)
+            return c, np.array(delta_list), (k + 1), np.array(c_over_time)
 
-    return c, np.array(delta_list), (k + 1)
+    return c, np.array(delta_list), (k + 1), np.array(c_over_time)
 
 def run_sor_diff_vals():
     omega_list = np.linspace(1.7, 2, 11, endpoint=False)[1:]
@@ -175,11 +191,11 @@ def run_sor_diff_vals():
     iter_list_50 = []
     best_omegas = []
     for N in N_list:
-        c_initial = np.zeros((N + 1, N + 1))
+        c_initial = np.zeros((N, N))
         c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
         c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
         for omega in omega_list:
-            _, _, k = sor_iteration(c_initial.copy(), omega=omega, max_iteration=900)
+            _, _, k, _ = sor_iteration(c_initial.copy(), omega=omega, max_iteration=900)
             k_list.append(k)
             if N == 50:
                 iter_list_50.append(k)
@@ -195,13 +211,13 @@ def create_objects(object_type, N, object_matrix, max_attempts = 100):
         j = random.randint(0, N - 1)
         if orientation == 0:
             if i < N - 1 and object_matrix[i, j] == 0 and object_matrix[i + 1, j] == 0:
-                object_matrix[i, j] == object_type
-                object_matrix[i + 1, j] == object_type
+                object_matrix[i, j] = object_type
+                object_matrix[i + 1, j] = object_type
                 return True, object_matrix
         else: 
             if j < N - 1 and object_matrix[i, j] == 0 and object_matrix[i, j + 1] == 0:
-                object_matrix[i, j] == object_type
-                object_matrix[i, j + 1] == object_type
+                object_matrix[i, j] = object_type
+                object_matrix[i, j + 1] = object_type
                 return True, object_matrix
     return False, object_matrix
 
@@ -212,8 +228,71 @@ def create_multiple_obj(object_count, object_type, N):
         success, object_matrix = create_objects(object_type, N, object_matrix)
         if success:
             placed_obj += 1
+            print(f'placed object {placed_obj} out of {object_count}')
     return object_matrix
 
+def test_diff_omegas(omega_list, obj_count, obj_type, N):
+    N = 50
+    c_initial = np.zeros((N, N))
+    c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
+    c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
+    k_list = []
+    k_list_temp = []
+    for i in range(10):
+        obj_mat = create_multiple_obj(obj_count, obj_type, N)
+        for omega in omega_list:
+            _, _, k, _ = sor_iteration(c_initial.copy(), omega=omega, obj_matrix=obj_mat, max_iteration=900)
+            k_list_temp.append(k)
+        k_list.append(np.mean(k_list_temp))
+        k_list_temp = []
+        print(f'finished run {i} out of 10 for obj count {obj_count}')
+    return k_list
+
+def multiple_runs_obj(obj_count, obj_type, N):
+    all_delta_list = []
+    k_list = []
+    for _ in range(10):
+        obj_mat = create_multiple_obj(obj_count, obj_type, N)
+        c_sor, delta_list_sor, k, c_over_time = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500, save_snap=True)
+        delta_list_sor = delta_list_sor.tolist()
+        k_list.append(k)
+        all_delta_list.append(delta_list_sor)
+    avg_k = np.mean(k_list)
+    max_len = max(len(d) for d in all_delta_list)
+    for i in range(len(all_delta_list)):
+        last_val = all_delta_list[i][-1]
+        while len(all_delta_list[i]) < max_len:
+            all_delta_list[i].append(last_val)
+    delta_array = np.array(all_delta_list)
+    avg_delta = np.mean(delta_array, axis=0)
+    return c_sor, avg_delta, avg_k, obj_mat, c_over_time
+
+def animate_conc(c_over_time, obj_mat, title, name):
+    time_step = c_over_time.shape[0]
+
+    fig, ax = plt.subplots()
+    
+    im = ax.imshow(c_over_time[0], origin="lower", cmap="plasma")
+    #ins_mask = np.ma.masked_where(obj_mat == 0, obj_mat)
+    #ins_img = ax.imshow(ins_mask, origin="lower", cmap="Reds", alpha=0.5)
+
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label("Concentration")
+    ax.set_title(title)
+
+    def update(t):
+        im.set_data(c_over_time[t])
+        return im,
+    
+    ani = FuncAnimation(
+        fig, 
+        update, 
+        frames=time_step, 
+        interval=100, 
+        blit=True)
+    ani.save(f"Figures/{name}.gif", fps=10, dpi=200)
+    plt.show()
+        
 
 # Try N = 50
 N = 50 
@@ -223,7 +302,7 @@ c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
 
 c_jacobi, delta_list = jacobi_iteration(c_initial.copy(), 5000)
 c_gauss, delta_list_gauss = gauss_seidel_iteration(c_initial.copy(), 2500)
-c_sor, delta_list_sor, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=np.zeros((N, N)), max_iteration=500)
+c_sor, delta_list_sor, _, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=np.zeros((N, N)), max_iteration=500)
 
 # H Test the methods by comparing the result to the analytical result in eq. (5), i.e. the linear dependence of the concentration on y.
 Ny, Nx = c_jacobi.shape
@@ -292,19 +371,171 @@ if run_j:
     plt.xlabel("Different board sizes")
     plt.ylabel("ω")
     plt.grid()
+    plt.savefig('Figures/QJ_N_vs_omega.png')
     plt.show()
 
     plt.plot(omegas, iter_list)
     plt.xlabel("ω")
     plt.ylabel("iteration count")
     plt.grid()
+    plt.savefig('Figures/QJ_omega_vs_k.png')
     plt.show()
 
 #Question K
+#number of sink objects vs the iteration
 N = 50
-obj_mat = create_multiple_obj(1, N, 1)
-c_sor1, delta_list_sor1, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
-obj_mat = create_multiple_obj(2, N, 1)
-c_sor2, delta_list_sor2, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
-obj_mat = create_multiple_obj(3, N, 1)
-c_sor3, delta_list_sor3, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500)
+#obj_mat1 = create_multiple_obj(1, 1, N)
+#obj_mat2 = create_multiple_obj(2, 1, N)
+#obj_mat3 = create_multiple_obj(3, 1, N)
+#obj_mat4 = create_multiple_obj(4, 1, N)
+#obj_mat5 = create_multiple_obj(5, 1, N)
+c_sor0, delta_list_sor0, k0, c_over_time0 = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=np.zeros((N, N)), max_iteration=500, save_snap=True)
+#c_sor1, delta_list_sor1, k1, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat1, max_iteration=500)
+#c_sor2, delta_list_sor2, k2, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat2, max_iteration=500)
+#c_sor3, delta_list_sor3, k3, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat3, max_iteration=500)
+#c_sor4, delta_list_sor4, k4, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat4, max_iteration=500)
+#c_sor5, delta_list_sor5, k5, _ = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat5, max_iteration=500)
+c_sor1, delta_list_sor1, k1, obj_mat1, c_over_time1 = multiple_runs_obj(1, 1, N)
+c_sor2, delta_list_sor2, k2, obj_mat2, c_over_time2 = multiple_runs_obj(2, 1, N)
+c_sor3, delta_list_sor3, k3, obj_mat3, c_over_time3 = multiple_runs_obj(3, 1, N)
+c_sor4, delta_list_sor4, k4, obj_mat4, c_over_time4 = multiple_runs_obj(4, 1, N)
+c_sor5, delta_list_sor5, k5, obj_mat5, c_over_time5  = multiple_runs_obj(5, 1, N)
+k_list = [k0, k1, k2, k3, k4, k5]
+obj_count = [0, 1, 2, 3, 4, 5]
+plt.plot(obj_count, k_list)
+plt.xlabel("Number of sink objects")
+plt.ylabel("Iteration count")
+plt.grid()
+plt.savefig('Figures/QK_objcount_vs_k.png')
+plt.show()
+
+#convergence rate δ vs the iteration count
+plt.plot(delta_list_sor0, color='red', label='0 objects')
+plt.plot(delta_list_sor1, color='orange', label='1 object')
+plt.plot(delta_list_sor2, color='yellow', label='2 objects')
+plt.plot(delta_list_sor3, color='green', label='3 objects')
+plt.plot(delta_list_sor4, color='blue', label='4 objects')
+plt.plot(delta_list_sor5, color='purple', label='5 objects')
+plt.yscale('log')
+plt.xlabel("Iteration count")
+plt.ylabel("δ")
+plt.legend()
+plt.grid()
+plt.savefig('Figures/QK_k_vs_delta.png')
+plt.show()
+
+run_k_omega = False
+#testing out different ω values
+if run_k_omega:
+    omega_list = np.linspace(1.7, 2, 11, endpoint=False)[1:]
+    iter_list0 = test_diff_omegas(omega_list, 0, 0, N)
+    iter_list1 = test_diff_omegas(omega_list, 1, 1, N)
+    iter_list2 = test_diff_omegas(omega_list, 2, 1, N)
+    iter_list3 = test_diff_omegas(omega_list, 3, 1, N)
+    iter_list4 = test_diff_omegas(omega_list, 4, 1, N)
+    iter_list5 = test_diff_omegas(omega_list, 5, 1, N)
+    plt.plot(omega_list, iter_list0, color='red', label='0 objects')
+    plt.plot(omega_list, iter_list1, color='orange', label='1 object')
+    plt.plot(omega_list, iter_list2, color='yellow', label='2 objects')
+    plt.plot(omega_list, iter_list3, color='green', label='3 objects')
+    plt.plot(omega_list, iter_list4, color='blue', label='4 objects')
+    plt.plot(omega_list, iter_list5, color='purple', label='5 objects')
+    plt.xlabel("ω")
+    plt.ylabel("iteration count")
+    plt.legend()
+    plt.grid()
+    plt.savefig('Figures/QK_omega_vs_k.png')
+    plt.show()
+    best0 = omega_list[iter_list0.index(min(iter_list0))]
+    best1 = omega_list[iter_list1.index(min(iter_list1))]
+    best2 = omega_list[iter_list2.index(min(iter_list2))]
+    best3 = omega_list[iter_list3.index(min(iter_list3))]
+    best4 = omega_list[iter_list4.index(min(iter_list4))]
+    best5 = omega_list[iter_list5.index(min(iter_list5))]
+    print(f'best ω for 0 objects {best0}')
+    print(f'best ω for 0 objects {best1}')
+    print(f'best ω for 0 objects {best2}')
+    print(f'best ω for 0 objects {best3}')
+    print(f'best ω for 0 objects {best4}')
+    print(f'best ω for 0 objects {best5}')
+
+
+#showing the concentration plot with the objects
+plt.figure()
+plt.imshow(c_sor0, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+plt.title("Diffusion with 0 objects")
+plt.savefig('Figures/QK_concentration0.png')
+plt.show()
+
+animate_conc(c_over_time0, np.zeros((N, N)), 'Diffusion over time with 0 objects', 'no_obj')
+
+plt.figure()
+plt.imshow(c_sor1, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat1 == 0, obj_mat1)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 1 sink object")
+plt.savefig('Figures/QK_concentration1.png')
+plt.show()
+
+animate_conc(c_over_time1, obj_mat1, 'Diffusion over time with 1 sink object', 'sink_1_obj')
+
+plt.figure()
+plt.imshow(c_sor2, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat2 == 0, obj_mat2)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 2 sink objects")
+plt.savefig('Figures/QK_concentration2.png')
+plt.show()
+
+animate_conc(c_over_time2, obj_mat2, 'Diffusion over time with 2 sink objects', 'sink_2_obj')
+
+plt.figure()
+plt.imshow(c_sor3, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat3 == 0, obj_mat3)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 3 sink objects")
+plt.savefig('Figures/QK_concentration3.png')
+plt.show()
+
+animate_conc(c_over_time3, obj_mat3, 'Diffusion over time with 3 sink objects', 'sink_3_obj')
+
+plt.figure()
+plt.imshow(c_sor4, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat4 == 0, obj_mat4)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 4 sink objects")
+plt.savefig('Figures/QK_concentration4.png')
+plt.show()
+
+animate_conc(c_over_time4, obj_mat4, 'Diffusion over time with 4 sink objects', 'sink_4_obj')
+
+plt.figure()
+plt.imshow(c_sor5, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat5 == 0, obj_mat5)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 5 sink objects")
+plt.savefig('Figures/QK_concentration5.png')
+plt.show()
+
+animate_conc(c_over_time5, obj_mat5, 'Diffusion over time with 5 sink objects', 'sink_5_obj')
+
+#Question L
+obj_mat = create_multiple_obj(3, 2, N)
+c_sor, _, _, c_over_time = sor_iteration(c_initial.copy(), omega=1.85, obj_matrix=obj_mat, max_iteration=500, save_snap=True)
+
+plt.figure()
+plt.imshow(c_sor, origin="lower", cmap="plasma")
+plt.colorbar(label="Concentration")
+obj_mask = np.ma.masked_where(obj_mat == 0, obj_mat)
+plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
+plt.title("Diffusion with 3 insulating objects")
+plt.savefig('Figures/QK_concentration_insulating.png')
+plt.show()
+
+animate_conc(c_over_time, obj_mat, 'Diffusion over time with 3 insulating objects', 'insulating_3_obj')
