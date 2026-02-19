@@ -5,6 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import math
 
 x_max = 1 # max x
 y_max = 1 # max y
@@ -104,6 +105,163 @@ def create_animation(matrices_over_time):
     plt.show()
 
 
+# Part E - Analytical Solution
+def analytical_solution(y_array, t, D):
+    ''' 
+    Analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1.
+    
+    Params:
+    - y: the y values at which to evaluate the solution
+    - t: the time at which to evaluate the solution
+    - D: the diffusion coefficient
+
+    Returns:
+    - c: the concentration values at each y for time t
+    '''
+    y_array = np.array(y_array)
+
+    if t <= 0:
+        output = np.zeros_like(y_array)
+        output[-1] = 1 # set boundary condition at t=0
+        output[0] = 0 # set boundary condition at t=0
+        return output
+    
+    denominator = 2 * np.sqrt(D * t)
+    profile = np.zeros_like(y_array)
+
+    for j, y in enumerate(y_array):
+        # compute the series sum for the analytical solution
+        series_sum = 0
+    
+        for i in range(0, 1000):
+            term_left = math.erfc((1 - y + 2 * i) / denominator)
+            term_right = math.erfc((1 + y + 2 * i) / denominator)
+            equation = term_left - term_right
+            series_sum += equation
+
+            if abs(equation) < 1e-10: # break if the term is small enough to not contribute to the sum
+                break
+        profile[j] = series_sum
+    return profile
+
+# Plot Question E 
+def plot_analytical_solution(concentration_over_time):
+    ''' 
+    Plots the analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1 for different times.
+    
+    Params:
+    - concentration_over_time: list of concentration fields over time
+    '''
+    y = np.linspace(0, y_max, N)
+    times = [0, 0.001, 0.01, 0.1, 1.0]
+   
+    for time in times:
+        frame = int((round(time/dt)))
+
+        if frame >= len(concentration_over_time):
+            frame = len(concentration_over_time) - 1
+        
+        concentration_field = concentration_over_time[frame]
+        numerical_profile = concentration_field[:,0]
+        analytical_profile = analytical_solution(y, time, D)
+        plt.figure()
+        plt.plot(y, numerical_profile, label=f"Numerical t={time:.3f} s", linestyle='dashed')
+        plt.plot(y, analytical_profile, label=f"Analytical t={time:.3f} s", linestyle='solid')
+    
+        plt.xlabel('y')
+        plt.ylabel('c(x,y,t)')
+        plt.title('Analytical Solution of Diffusion over time')
+        plt.legend()
+        plt.savefig(f"analytical_solution_t{time:.3f}.png")
+        plt.show()
+
+# Question F
+def diffusion(concentration_over_time):
+    ''' 
+    Runs diffusion simulation and creates animation for it.
+    
+    Params:
+    - concentration_over_time: list of concentration fields over time
+    '''
+    times = [0, 0.001, 0.01, 0.1, 1.0]
+    frame_indices = []
+
+    for t in times:
+        frame = int(t/dt)
+
+        if frame >= len(concentration_over_time):
+            frame = len(concentration_over_time) - 1
+        frame_indices.append(frame)
+
+    x = np.linspace(0, x_max, N)
+    y = np.linspace(0, y_max, N)
+    fig, axes = plt.subplots(1, len(times), figsize=(15, 3))
+    shared_mappable = None
+    
+    for idx, ax in enumerate(axes):
+        concentration_fields = concentration_over_time[frame_indices[idx]]
+        shared_mappable = ax.imshow(
+            concentration_fields,
+            extent=[0, 1, 0, 1], 
+            vmin=0,
+            vmax=1,
+            origin='lower'
+        )
+    
+        ax.set_title(f't = {times[idx]:.3f} seconds')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_xlim(0, 1)       
+        ax.set_ylim(0, 1)
+
+    fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
+    
+    
+    plt.savefig("diffusion_over_time.png")
+    plt.show()
+
+def plot_diffusion_with_analytical(concentration_over_time, analytical_func, dt, x_max=1.0, N=50, slice_idx=None):
+    """
+    Plots diffusion along a fixed slice over time with both numerical and analytical solutions.
+    
+    Params:
+    - concentration_over_time: array of shape (Nt, Nx, Ny)
+    - analytical_func: function of (x, t) giving analytical solution
+    - dt: time step
+    - x_max: maximum x-coordinate
+    - N: number of points in x (assumes square grid)
+    - slice_idx: index along y to take a 1D slice; if None, takes middle row
+    """
+    Nt = len(concentration_over_time)
+    x = np.linspace(0, x_max, N)
+
+    if slice_idx is None:
+        slice_idx = N // 2  # middle row
+
+    # Choose time points to compare
+    times = [0, 0.001, 0.01, 0.1, 1.0]
+    frame_indices = [min(int(t/dt), Nt-1) for t in times]
+
+    plt.figure(figsize=(8,5))
+
+    for idx, frame in enumerate(frame_indices):
+        # Numerical slice
+        conc_slice = concentration_over_time[frame][:, slice_idx]
+        plt.plot(x, conc_slice, label=f'Numerical t={times[idx]:.3f} s')
+
+        # Analytical slice
+        analytical_slice = analytical_func(x, times[idx])
+        plt.plot(x, analytical_slice, '--', label=f'Analytical t={times[idx]:.3f} s')
+
+    plt.xlabel('x')
+    plt.ylabel('Concentration c(x,y,t)')
+    plt.title('Diffusion over time at y = {:.2f}'.format(slice_idx/N))
+    plt.legend(fontsize=8)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("diffusion_numerical_vs_analytical.png")
+    plt.show()
+
 # set up initial matrix
 first_matrix = np.zeros((N,N))
 first_matrix[-1, :] = np.ones(N)
@@ -113,3 +271,9 @@ diffusion_over_time = run_diffusion(first_matrix, N_t)
 print(' number of time steps: ', len(diffusion_over_time))
 create_animation(diffusion_over_time)
 
+# ANALYTICAL SOLUTION
+diffusion(diffusion_over_time)
+plot_analytical_solution(diffusion_over_time)
+
+analytical_func = lambda x, t: analytical_solution(x, t, D)
+plot_diffusion_with_analytical(diffusion_over_time, analytical_func=analytical_func, dt=dt)

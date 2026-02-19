@@ -90,7 +90,7 @@ y = initial_wave_profile_cond(y, N, r)
 y = propagate_wave_cond(y, N, Nt, r)
 
 # Question C
-def animate_wave(u_matrix):
+def animate_wave(u_matrix, filename, equation=""):
     '''
     Function that animates a wave in 2D
     Assumes each row in the u_matrix is one time step
@@ -107,6 +107,11 @@ def animate_wave(u_matrix):
     fig, ax = plt.subplots()
     line, = ax.plot(x, u_matrix[0])
 
+    # set axis labels
+    ax.set_xlabel(r"$x$")
+    ax.set_ylabel("Amplitude")
+    ax.set_title("Wave Animation of " + filename + f" ({equation})")
+
     # set limits for proper animation
     ax.set_xlim(x.min(), x.max())
     ax.set_ylim(u_matrix.min(), u_matrix.max())
@@ -118,7 +123,7 @@ def animate_wave(u_matrix):
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time (s)')
+    cbar.set_label('Time')
 
     def update(frame_idx):
         t = frame_idx * dt
@@ -133,10 +138,14 @@ def animate_wave(u_matrix):
         interval=50,
         blit=True
     )
+    if equation == "":
+        ani.save(filename=filename + ".gif", writer="pillow", fps=30)
+    else: 
+        ani.save(filename=filename + "_boundaries.gif", writer="pillow", fps=30)
     plt.show()
 
 # Question B
-def plot_wave(u, eq):
+def plot_wave(u, eq, filename):
     cmap = plt.get_cmap('plasma', Nt)
     for i in range(0, Nt):
         t = i * dt
@@ -146,21 +155,23 @@ def plot_wave(u, eq):
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time (s)')
+    cbar.set_label('Time')
 
-    plt.xlabel("x")
-    plt.ylabel(f"u(x,t) {eq}")
-    plt.title("Wave evolution")
+    plt.xlabel(r"$x$")
+    plt.ylabel(f"Amplitude")
+    plt.title(f"Wave evolution u(x,t)={eq}")
+    plt.savefig(filename + ".png")
     plt.show()
 
 # Question B
-plot_wave(u, 'sin(2πx)')
-plot_wave(v, 'sin(5πx)')
-plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0')
+plot_wave(u, 'sin(2πx)', "wave_sin(2πx)")
+plot_wave(v, 'sin(5πx)', "wave_sin(5πx)")
+plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0', "wave_sin(5πx)_boundaries")
 
 # Question C
-animate_wave(u)
-animate_wave(v)
-animate_wave(y)
+animate_wave(u, "sin(2πx)")
+animate_wave(v, "sin(5πx)")
+animate_wave(y, "sin(5πx)", equation="if 1/5 < x < 2/5 else Ψ = 0")
 
+print("all saved")
 
