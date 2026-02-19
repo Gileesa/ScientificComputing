@@ -134,12 +134,6 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), save_
     """
     Ny, Nx = c.shape
     
-    for j in range(1, Ny-1):
-        for i in range(Nx):
-            if obj_matrix[j, i] != 0:
-                c[j, i] = 0
-    
-    
     c[0, :] = 0 # set boundary condition
     c[-1, :] = 1 # set boundary condition
     neighbour = np.zeros_like(c)
@@ -195,7 +189,7 @@ def run_sor_diff_vals():
         c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
         c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
         for omega in omega_list:
-            _, _, k, _ = sor_iteration(c_initial.copy(), omega=omega, max_iteration=900)
+            _, _, k, _ = sor_iteration(c_initial.copy(), obj_matrix=np.zeros((N,N)), omega=omega, max_iteration=900)
             k_list.append(k)
             if N == 50:
                 iter_list_50.append(k)
@@ -237,15 +231,14 @@ def test_diff_omegas(omega_list, obj_count, obj_type, N):
     c_initial[0, :] = 0 # set boundary condition at y = 0 to 0
     c_initial[-1, :] = 1 # set boundary condition at y = 1 to 1
     k_list = []
-    k_list_temp = []
-    for i in range(10):
-        obj_mat = create_multiple_obj(obj_count, obj_type, N)
-        for omega in omega_list:
+    for omega in omega_list:
+        k_list_temp = []
+        for i in range(10):
+            obj_mat = create_multiple_obj(obj_count, obj_type, N)
             _, _, k, _ = sor_iteration(c_initial.copy(), omega=omega, obj_matrix=obj_mat, max_iteration=900)
             k_list_temp.append(k)
+            print(f'finished run {i} out of 10 for obj count {obj_count}')
         k_list.append(np.mean(k_list_temp))
-        k_list_temp = []
-        print(f'finished run {i} out of 10 for obj count {obj_count}')
     return k_list
 
 def multiple_runs_obj(obj_count, obj_type, N):
@@ -339,7 +332,7 @@ plt.plot(y, y, "--", label="Analytical c=y")
 plt.legend()
 plt.xlabel("y")
 plt.ylabel("c")
-plt.savefig("jacobi_gauss_sor_comparison.png")
+plt.savefig("Figures/1.3/jacobi_gauss_sor_comparison.png")
 plt.show()
 
 # Question I 
@@ -354,13 +347,13 @@ plt.semilogy(delta_list_sor, label="SOR omega=1.85")
 plt.xlabel("Iteration k")
 plt.ylabel("Delta")
 plt.legend()
-plt.savefig("convergence_comparison.png")
+plt.savefig("Figures/1.3/convergence_comparison.png")
 plt.show()
 
 #Question J
 #due to run time making the running of this toggle on and off
 #runnging with different N and omega values for plotting seeing the effects
-run_j = False
+run_j = True
 if run_j:
     best_omegas, N_vals, iter_list, omegas = run_sor_diff_vals()
     print(iter_list)
@@ -371,14 +364,14 @@ if run_j:
     plt.xlabel("Different board sizes")
     plt.ylabel("ω")
     plt.grid()
-    plt.savefig('Figures/QJ_N_vs_omega.png')
+    plt.savefig('Figures/1.3/QJ_N_vs_omega.png')
     plt.show()
 
     plt.plot(omegas, iter_list)
     plt.xlabel("ω")
     plt.ylabel("iteration count")
     plt.grid()
-    plt.savefig('Figures/QJ_omega_vs_k.png')
+    plt.savefig('Figures/1.3/QJ_omega_vs_k.png')
     plt.show()
 
 #Question K
@@ -406,7 +399,7 @@ plt.plot(obj_count, k_list)
 plt.xlabel("Number of sink objects")
 plt.ylabel("Iteration count")
 plt.grid()
-plt.savefig('Figures/QK_objcount_vs_k.png')
+plt.savefig('Figures/1.3/QK_objcount_vs_k.png')
 plt.show()
 
 #convergence rate δ vs the iteration count
@@ -421,10 +414,10 @@ plt.xlabel("Iteration count")
 plt.ylabel("δ")
 plt.legend()
 plt.grid()
-plt.savefig('Figures/QK_k_vs_delta.png')
+plt.savefig('Figures/1.3/QK_k_vs_delta.png')
 plt.show()
 
-run_k_omega = False
+run_k_omega = True
 #testing out different ω values
 if run_k_omega:
     omega_list = np.linspace(1.7, 2, 11, endpoint=False)[1:]
@@ -444,7 +437,7 @@ if run_k_omega:
     plt.ylabel("iteration count")
     plt.legend()
     plt.grid()
-    plt.savefig('Figures/QK_omega_vs_k.png')
+    plt.savefig('Figures/1.3/QK_omega_vs_k.png')
     plt.show()
     best0 = omega_list[iter_list0.index(min(iter_list0))]
     best1 = omega_list[iter_list1.index(min(iter_list1))]
@@ -465,7 +458,7 @@ plt.figure()
 plt.imshow(c_sor0, origin="lower", cmap="plasma")
 plt.colorbar(label="Concentration")
 plt.title("Diffusion with 0 objects")
-plt.savefig('Figures/QK_concentration0.png')
+plt.savefig('Figures/1.3/QK_concentration0.png')
 plt.show()
 
 animate_conc(c_over_time0, np.zeros((N, N)), 'Diffusion over time with 0 objects', 'no_obj')
@@ -476,7 +469,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat1 == 0, obj_mat1)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 1 sink object")
-plt.savefig('Figures/QK_concentration1.png')
+plt.savefig('Figures/1.3/QK_concentration1.png')
 plt.show()
 
 animate_conc(c_over_time1, obj_mat1, 'Diffusion over time with 1 sink object', 'sink_1_obj')
@@ -487,7 +480,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat2 == 0, obj_mat2)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 2 sink objects")
-plt.savefig('Figures/QK_concentration2.png')
+plt.savefig('Figures/1.3/QK_concentration2.png')
 plt.show()
 
 animate_conc(c_over_time2, obj_mat2, 'Diffusion over time with 2 sink objects', 'sink_2_obj')
@@ -498,7 +491,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat3 == 0, obj_mat3)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 3 sink objects")
-plt.savefig('Figures/QK_concentration3.png')
+plt.savefig('Figures/1.3/QK_concentration3.png')
 plt.show()
 
 animate_conc(c_over_time3, obj_mat3, 'Diffusion over time with 3 sink objects', 'sink_3_obj')
@@ -509,7 +502,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat4 == 0, obj_mat4)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 4 sink objects")
-plt.savefig('Figures/QK_concentration4.png')
+plt.savefig('Figures/1.3/QK_concentration4.png')
 plt.show()
 
 animate_conc(c_over_time4, obj_mat4, 'Diffusion over time with 4 sink objects', 'sink_4_obj')
@@ -520,7 +513,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat5 == 0, obj_mat5)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 5 sink objects")
-plt.savefig('Figures/QK_concentration5.png')
+plt.savefig('Figures/1.3/QK_concentration5.png')
 plt.show()
 
 animate_conc(c_over_time5, obj_mat5, 'Diffusion over time with 5 sink objects', 'sink_5_obj')
@@ -535,7 +528,7 @@ plt.colorbar(label="Concentration")
 obj_mask = np.ma.masked_where(obj_mat == 0, obj_mat)
 plt.imshow(obj_mask, origin="lower", cmap="Reds", alpha=0.5)
 plt.title("Diffusion with 3 insulating objects")
-plt.savefig('Figures/QK_concentration_insulating.png')
+plt.savefig('Figures/1.3/QK_concentration_insulating.png')
 plt.show()
 
 animate_conc(c_over_time, obj_mat, 'Diffusion over time with 3 insulating objects', 'insulating_3_obj')
