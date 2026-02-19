@@ -123,7 +123,7 @@ def animate_wave(u_matrix, filename, equation=""):
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time (s)')
+    cbar.set_label('Time')
 
     def update(frame_idx):
         t = frame_idx * dt
@@ -155,7 +155,7 @@ def plot_wave(u, eq, filename):
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time (s)')
+    cbar.set_label('Time')
 
     plt.xlabel(r"$x$")
     plt.ylabel(f"Amplitude")
