@@ -86,8 +86,8 @@ u = initial_wave_profile(u, N, r)
 u = propagate_wave(u, N, Nt, r)
 v = initial_wave_profile(v, N, r)
 v = propagate_wave(v, N, Nt, r)
-y = initial_wave_profile_cond(y, N, r)
-y = propagate_wave_cond(y, N, Nt, r)
+y = initial_wave_profile(y, N, r)
+y = propagate_wave(y, N, Nt, r)
 
 # Question C
 def animate_wave(u_matrix):
