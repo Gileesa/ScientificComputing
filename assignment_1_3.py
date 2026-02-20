@@ -283,7 +283,7 @@ def animate_conc(c_over_time, obj_mat, title, name):
         frames=time_step, 
         interval=100, 
         blit=True)
-    ani.save(f"Figures/{name}.gif", fps=10, dpi=200)
+    ani.save(f"Figures/1.3/{name}.gif", fps=10, dpi=200)
     plt.show()
         
 
