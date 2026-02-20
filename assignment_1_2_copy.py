@@ -213,7 +213,7 @@ def plot_analytical_solution(concentration_over_time):
         plt.ylabel('c(x,y,t)')
         plt.title('Analytical Solution of Diffusion over time')
         plt.legend()
-        plt.savefig(f"analytical_solution_t{time:.3f}.png")
+        plt.savefig(f"Figures/1.2/analytical_solution_t{time:.3f}.png")
         plt.show()
 
 
@@ -257,9 +257,7 @@ def diffusion(concentration_over_time):
         ax.set_ylim(0, 1)
 
     fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
-    
-    
-    plt.savefig("diffusion_over_time.png")
+    plt.savefig("Figures/1.2/diffusion_over_time.png")
     plt.show()
 
 # set up initial matrix
@@ -270,7 +268,6 @@ first_matrix[-1, :] = 1
 # run simulation
 diffusion_over_time = run_diffusion(first_matrix, N_t)
 print(' number of time steps: ', len(diffusion_over_time))
-#animate_diffusion(diffusion_over_time, filename="diffusion.gif", fps=20)
-#create_animation(diffusion_over_time)
+animate_diffusion(diffusion_over_time, filename="Figures/1.2/diffusion.gif", fps=20)
 diffusion(diffusion_over_time)
 plot_analytical_solution(diffusion_over_time)

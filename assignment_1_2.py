@@ -1,37 +1,33 @@
-# 
-# Part E (simulation part)
-# 
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
 import math
 
 x_max = 1 # max x
 y_max = 1 # max y
 N = 50 # number of x and y steps
 
-dx = x_max / N # x-step of simulation 1/100 -> 0.05
+dx = x_max / N # x-step of simulation 1/50 -> 0.02
 dy = dx # y-step of simulation
 t_max = 1 # max time of simulation
 D = 1 # diffusion coeff.
 
-
-#dt = t_max / N_t # time step of simulation
 dt = 0.25 * dx**2 / D # time step of simulation, set to be stable (D*dt/dx^2 <= 0.25)
-N_t = int(t_max/dt) # number of time steps
+N_t = int(t_max/dt) # number of time steps 1 / (0.25 * 0.004 /1) = 1000 time steps
 
-# two dimensional, but only depends on y because of symmetry
+# Question D
 def one_step_2d(matrix):
-    '''One diffusion step in the 2D diffusion simulation.
+    '''
+    One diffusion step in the 2D diffusion simulation.
     Periodic boundaries on x.
     Set boundaries on y (1 at top, 0 on bottom).
     
     Params:
-    - matrix: the matrix from which the next time step for diffusion is determined
+    - matrix: the matrix from which the next time step for diffusion is determined.
 
     Returns:
-    - next_matrix: the next time step diffusion matrix
+    - next_matrix: the next time step diffusion matrix.
     ''' 
 
     # set alpha constant
@@ -57,11 +53,11 @@ def one_step_2d(matrix):
 
 def run_diffusion(current_matrix, N_t):
     ''' 
-    Runs several timesteps for full diffusion simulation pipeline
+    Runs several timesteps for full diffusion simulation pipeline.
     
     Params:
-    - current_matrix: the initial conditions (initial matrix)
-    - N_t: the number of time steps
+    - current_matrix: the initial conditions (initial matrix).
+    - N_t: the number of time steps.
 
     Returns:
     - matrices: a list of all matrices in the diffusion. Each matrix represents 1 timestep in the simulation.
@@ -86,24 +82,35 @@ def create_animation(matrices_over_time):
     Params:
     - matrices_over_time: list of matrices, each matrix representing 1 timestep.
     '''
-
-    animation = plt.figure()
-
-    color_scale = plt.pcolormesh(
+    fig, ax = plt.subplots()
+    img = ax.imshow(
         matrices_over_time[0],
-        vmin=0, # min heat
-        vmax=1, # max heat
-        shading="auto"
+        vmin=0,
+        vmax=1,
+        origin='lower',
+        extent=[0, 1, 0, 1]
     )
-    plt.colorbar()
 
-    def step(i):
-        color_scale.set_array(matrices_over_time[i].ravel())
-        return color_scale,
+    fig.colorbar(img, ax=ax)
 
-    anim = FuncAnimation(animation, step, frames=len(matrices_over_time), interval=10, blit=True)
-    plt.show()
+    def update(frame):
+        img.set_data(matrices_over_time[frame])
+        ax.set_title(f"t = {frame*dt:.3f} s")
+        return img,
 
+    anim = FuncAnimation(
+        fig,
+        update,
+        frames=len(matrices_over_time),
+        interval=10,
+        blit=True
+    )
+
+    anim.save("Figures/1.2/diffusion_over_time.gif",
+              writer="pillow",
+              fps=20)
+
+    plt.close(fig)
 
 # Part E - Analytical Solution
 def analytical_solution(y_array, t, D):
@@ -150,7 +157,7 @@ def plot_analytical_solution(concentration_over_time):
     Plots the analytical solution for diffusion in 1D with boundary conditions c(0,t) = 0 and c(L,t) = 1 for different times.
     
     Params:
-    - concentration_over_time: list of concentration fields over time
+    - concentration_over_time: list of concentration fields over time.
     '''
     y = np.linspace(0, y_max, N)
     times = [0, 0.001, 0.01, 0.1, 1.0]
@@ -172,7 +179,7 @@ def plot_analytical_solution(concentration_over_time):
         plt.ylabel('c(x,y,t)')
         plt.title('Analytical Solution of Diffusion over time')
         plt.legend()
-        plt.savefig(f"analytical_solution_t{time:.3f}.png")
+        plt.savefig(f"Figures/1.2/analytical_solution_t{time:.3f}.png")
         plt.show()
 
 # Question F
@@ -217,7 +224,7 @@ def diffusion(concentration_over_time):
     fig.colorbar(shared_mappable, ax=axes, label ="concentration c(x,y,t)")
     
     
-    plt.savefig("diffusion_over_time.png")
+    plt.savefig("Figures/1.2/diffusion_over_time.png")
     plt.show()
 
 def plot_diffusion_with_analytical(concentration_over_time, analytical_func, dt, x_max=1.0, N=50, slice_idx=None):
@@ -259,7 +266,7 @@ def plot_diffusion_with_analytical(concentration_over_time, analytical_func, dt,
     plt.legend(fontsize=8)
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("diffusion_numerical_vs_analytical.png")
+    plt.savefig("Figures/1.2/diffusion_numerical_vs_analytical.png")
     plt.show()
 
 # set up initial matrix
