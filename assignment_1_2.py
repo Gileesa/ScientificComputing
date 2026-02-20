@@ -240,7 +240,7 @@ def plot_diffusion_with_analytical(concentration_over_time, analytical_func, dt,
     - slice_idx: index along y to take a 1D slice; if None, takes middle row
     """
     Nt = len(concentration_over_time)
-    x = np.linspace(0, x_max, N)
+    y = np.linspace(0, y_max, N)
 
     if slice_idx is None:
         slice_idx = N // 2  # middle row
@@ -254,15 +254,15 @@ def plot_diffusion_with_analytical(concentration_over_time, analytical_func, dt,
     for idx, frame in enumerate(frame_indices):
         # Numerical slice
         conc_slice = concentration_over_time[frame][:, slice_idx]
-        plt.plot(x, conc_slice, label=f'Numerical t={times[idx]:.3f} s')
+        plt.plot(y, conc_slice, label=f'Numerical t={times[idx]:.3f} s')
 
         # Analytical slice
-        analytical_slice = analytical_func(x, times[idx])
-        plt.plot(x, analytical_slice, '--', label=f'Analytical t={times[idx]:.3f} s')
+        analytical_slice = analytical_func(y, times[idx])
+        plt.plot(y, analytical_slice, '--', label=f'Analytical t={times[idx]:.3f} s')
 
-    plt.xlabel('x')
-    plt.ylabel('Concentration c(x,y,t)')
-    plt.title('Diffusion over time at y = {:.2f}'.format(slice_idx/N))
+    plt.xlabel('y')
+    plt.ylabel('Concentration c(y,t)')
+    plt.title('Numerical vs Analytical solution for diffusion')
     plt.legend(fontsize=8)
     plt.grid(True)
     plt.tight_layout()
