@@ -341,8 +341,16 @@ plt.show()
 # A log-lin plot may be suitable. 
 # For SOR, choose a few representative values for ω.
 
+omegas = [1.7, 1.75, 1.80, 1.85, 1.90, 1.95, 2.0, 2.05]
+
 plt.semilogy(delta_list, label="Jacobi")
 plt.semilogy(delta_list_gauss, label="Gauss-Seidel")
+
+# For SOR, choose a few representative values for ω.
+for w in omegas:
+    _, delta_list_sor = sor_iteration(c_initial.copy(), omega=w, max_iteration=500)
+    plt.semilogy(delta_list_sor, label=f"SOR omega={w}")
+
 plt.semilogy(delta_list_sor, label="SOR omega=1.85")
 plt.xlabel("Iteration k")
 plt.ylabel("Delta")
