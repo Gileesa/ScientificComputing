@@ -4,174 +4,176 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib as mpl
 
-# Question A
-# Discretize the wave equation, and write it in a form suitable for implementing in a computer program. 
-# Assume that the boundaries are fixed, Ψ(x =0,t) = 0, Ψ(x = L,t) = 0. 
-# L is the length of the string. 
-# Take L = 1 for simplicity.
-# Divide the string in N intervals, so that the interval length is ∆x = L/N. 
-# Also consider the boundary cases. 
-# If you use Euler’s method, you need to use both Ψ(x,t) and Ψt(x,t) as variables.
-# Or use the stepping method from the lectures, which uses Ψ at the two most recent time points to calculate it at the next one.
+def run_1_1():
+    # Question A
+    # Discretize the wave equation, and write it in a form suitable for implementing in a computer program. 
+    # Assume that the boundaries are fixed, Ψ(x =0,t) = 0, Ψ(x = L,t) = 0. 
+    # L is the length of the string. 
+    # Take L = 1 for simplicity.
+    # Divide the string in N intervals, so that the interval length is ∆x = L/N. 
+    # Also consider the boundary cases. 
+    # If you use Euler’s method, you need to use both Ψ(x,t) and Ψt(x,t) as variables.
+    # Or use the stepping method from the lectures, which uses Ψ at the two most recent time points to calculate it at the next one.
 
-L = 1 # length of the string
-c = 1 # wave speed (m/s)
+    L = 1 # length of the string
+    c = 1 # wave speed (m/s)
 
-N = 1000 # number of spatial points
-dx = L / N # spatial step size
-x = np.linspace(0, L, N + 1)
-T = 1  # total time of simulation
-dt = 0.001         # c * (dt / dx) <= 1 for stability
-Nt = int(T / dt) # number of time steps
-r = c * (dt / dx) 
+    N = 1000 # number of spatial points
+    dx = L / N # spatial step size
+    x = np.linspace(0, L, N + 1)
+    T = 1  # total time of simulation
+    dt = 0.001         # c * (dt / dx) <= 1 for stability
+    Nt = int(T / dt) # number of time steps
+    r = c * (dt / dx) 
 
-u = np.zeros((Nt+1, N+1)) # u[n, i] n = time, i = space
-v = np.zeros((Nt+1, N+1))
-y = np.zeros((Nt+1, N+1))
+    u = np.zeros((Nt+1, N+1)) # u[n, i] n = time, i = space
+    v = np.zeros((Nt+1, N+1))
+    y = np.zeros((Nt+1, N+1))
 
-u[0, :] = np.sin(2*np.pi*x)
-# initial conditions (fixed boundary conditions)
-u[0, 0] = 0.0
-u[0, -1] = 0.0
+    u[0, :] = np.sin(2*np.pi*x)
+    # initial conditions (fixed boundary conditions)
+    u[0, 0] = 0.0
+    u[0, -1] = 0.0
 
-v[0, :] = np.sin(5*np.pi*x)
-# initial conditions (fixed boundary conditions)
-v[0, 0] = 0.0
-v[0, -1] = 0.0
+    v[0, :] = np.sin(5*np.pi*x)
+    # initial conditions (fixed boundary conditions)
+    v[0, 0] = 0.0
+    v[0, -1] = 0.0
 
-y[0, :] = np.where((x > (1/5)) & (x < (2/5)), np.sin(5 * np.pi * x), 0.0)
-# initial conditions (fixed boundary conditions)
-y[0, 0] = 0.0
-y[0, -1] = 0.0
+    y[0, :] = np.where((x > (1/5)) & (x < (2/5)), np.sin(5 * np.pi * x), 0.0)
+    # initial conditions (fixed boundary conditions)
+    y[0, 0] = 0.0
+    y[0, -1] = 0.0
 
-def initial_wave_profile_cond(u, N, r):
-    for i in range(1, N):
-        # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
-        if x[i] <= (1/5) or x[i] >= (2/5):
-            u[1, i] = 0
-        else:
-            u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
-    u[1, 0] = 0.0
-    u[1, -1] = 0.0
-    return u
-
-def propagate_wave_cond(u, N, Nt, r):
-    for n in range(1, Nt):
+    def initial_wave_profile_cond(u, N, r):
         for i in range(1, N):
+            # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
             if x[i] <= (1/5) or x[i] >= (2/5):
                 u[1, i] = 0
             else:
-                u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
-        u[n+1, 0] = 0.0
-        u[n+1, -1] = 0.0
-    return u 
+                u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
+        u[1, 0] = 0.0
+        u[1, -1] = 0.0
+        return u
 
-def initial_wave_profile(u, N, r):
-    for i in range(1, N):
-        # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
-        u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
-    u[1, 0] = 0.0
-    u[1, -1] = 0.0
-    return u
+    def propagate_wave_cond(u, N, Nt, r):
+        for n in range(1, Nt):
+            for i in range(1, N):
+                if x[i] <= (1/5) or x[i] >= (2/5):
+                    u[1, i] = 0
+                else:
+                    u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
+            u[n+1, 0] = 0.0
+            u[n+1, -1] = 0.0
+        return u 
 
-def propagate_wave(u, N, Nt, r):
-    for n in range(1, Nt):
+    def initial_wave_profile(u, N, r):
         for i in range(1, N):
-            u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
-        u[n+1, 0] = 0.0
-        u[n+1, -1] = 0.0
-    return u 
+            # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
+            u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
+        u[1, 0] = 0.0
+        u[1, -1] = 0.0
+        return u
 
-u = initial_wave_profile(u, N, r)
-u = propagate_wave(u, N, Nt, r)
-v = initial_wave_profile(v, N, r)
-v = propagate_wave(v, N, Nt, r)
-y = initial_wave_profile(y, N, r)
-y = propagate_wave(y, N, Nt, r)
+    def propagate_wave(u, N, Nt, r):
+        for n in range(1, Nt):
+            for i in range(1, N):
+                u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
+            u[n+1, 0] = 0.0
+            u[n+1, -1] = 0.0
+        return u 
 
-# Question C
-def animate_wave(u_matrix, filename, equation=""):
-    '''
-    Function that animates a wave in 2D
-    Assumes each row in the u_matrix is one time step
+    u = initial_wave_profile(u, N, r)
+    u = propagate_wave(u, N, Nt, r)
+    v = initial_wave_profile(v, N, r)
+    v = propagate_wave(v, N, Nt, r)
+    y = initial_wave_profile(y, N, r)
+    y = propagate_wave(y, N, Nt, r)
 
-    Params:
-    - u_matrix: matrix containing wave over time. Each row represents one time step
-    '''
-    N_t, N_x = u_matrix.shape
-    x = np.linspace(0, 1, N_x)
+    # Question C
+    def animate_wave(u_matrix, filename, equation=""):
+        '''
+        Function that animates a wave in 2D
+        Assumes each row in the u_matrix is one time step
 
-    step = 5
-    frame_indices = np.arange(0, N_t, step)
+        Params:
+        - u_matrix: matrix containing wave over time. Each row represents one time step
+        '''
+        N_t, N_x = u_matrix.shape
+        x = np.linspace(0, 1, N_x)
 
-    fig, ax = plt.subplots()
-    line, = ax.plot(x, u_matrix[0])
+        step = 5
+        frame_indices = np.arange(0, N_t, step)
 
-    # set axis labels
-    ax.set_xlabel(r"$x$")
-    ax.set_ylabel("Amplitude")
-    ax.set_title("Wave Animation of " + filename + f" ({equation})")
+        fig, ax = plt.subplots()
+        line, = ax.plot(x, u_matrix[0])
 
-    # set limits for proper animation
-    ax.set_xlim(x.min(), x.max())
-    ax.set_ylim(u_matrix.min(), u_matrix.max())
+        # set axis labels
+        ax.set_xlabel(r"$x$")
+        ax.set_ylabel("Amplitude")
+        ax.set_title("Wave Animation of " + filename + f" ({equation})")
 
-    # Colormap
-    cmap = plt.get_cmap('plasma')
+        # set limits for proper animation
+        ax.set_xlim(x.min(), x.max())
+        ax.set_ylim(u_matrix.min(), u_matrix.max())
 
-    # Colorbar (shows time)
-    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time')
+        # Colormap
+        cmap = plt.get_cmap('plasma')
 
-    def update(frame_idx):
-        t = frame_idx * dt
-        line.set_ydata(u_matrix[frame_idx]) # make animation faster by *5\
-        line.set_color(cmap(t))
-        return line,
+        # Colorbar (shows time)
+        sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=plt.gca())
+        cbar.set_label('Time')
 
-    ani = FuncAnimation(
-        fig,
-        update,
-        frames=frame_indices,
-        interval=50,
-        blit=True
-    )
-    if equation == "":
-        ani.save(filename=filename + ".gif", writer="pillow", fps=30)
-    else: 
-        ani.save(filename=filename + "_boundaries.gif", writer="pillow", fps=30)
-    plt.show()
+        def update(frame_idx):
+            t = frame_idx * dt
+            line.set_ydata(u_matrix[frame_idx]) # make animation faster by *5\
+            line.set_color(cmap(t))
+            return line,
 
-# Question B
-def plot_wave(u, eq, filename):
-    cmap = plt.get_cmap('plasma', Nt)
-    for i in range(0, Nt):
-        t = i * dt
-        colour = cmap(i)
-        plt.plot(x, u[i, :], color = colour)
+        ani = FuncAnimation(
+            fig,
+            update,
+            frames=frame_indices,
+            interval=50,
+            blit=True
+        )
+        if equation == "":
+            ani.save(filename=filename + ".gif", writer="pillow", fps=30)
+        else: 
+            ani.save(filename=filename + "_boundaries.gif", writer="pillow", fps=30)
+        plt.show()
 
-    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=plt.gca())
-    cbar.set_label('Time')
+    # Question B
+    def plot_wave(u, eq, filename):
+        cmap = plt.get_cmap('plasma', Nt)
+        for i in range(0, Nt):
+            t = i * dt
+            colour = cmap(i)
+            plt.plot(x, u[i, :], color = colour)
 
-    plt.xlabel(r"$x$")
-    plt.ylabel(f"Amplitude")
-    plt.title(f"Wave evolution u(x,t)={eq}")
-    plt.savefig(filename + ".png")
-    plt.show()
+        sm = mpl.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=T))
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=plt.gca())
+        cbar.set_label('Time')
 
-# Question B
-plot_wave(u, 'sin(2πx)', "wave_sin(2πx)")
-plot_wave(v, 'sin(5πx)', "wave_sin(5πx)")
-plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0', "wave_sin(5πx)_boundaries")
+        plt.xlabel(r"$x$")
+        plt.ylabel(f"Amplitude")
+        plt.title(f"Wave evolution u(x,t)={eq}")
+        plt.savefig(filename + ".png")
+        plt.show()
 
-# Question C
-animate_wave(u, "sin(2πx)")
-animate_wave(v, "sin(5πx)")
-animate_wave(y, "sin(5πx)", equation="if 1/5 < x < 2/5 else Ψ = 0")
+    # Question B
+    plot_wave(u, 'sin(2πx)', "wave_sin(2πx)")
+    plot_wave(v, 'sin(5πx)', "wave_sin(5πx)")
+    plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0', "wave_sin(5πx)_boundaries")
 
-print("all saved")
+    # Question C
+    animate_wave(u, "sin(2πx)")
+    animate_wave(v, "sin(5πx)")
+    animate_wave(y, "sin(5πx)", equation="if 1/5 < x < 2/5 else Ψ = 0")
+
+    print("all saved")
+    print("1.1 finished running")
 
