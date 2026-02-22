@@ -46,6 +46,19 @@ def run_1_1():
     y[0, -1] = 0.0
 
     def initial_wave_profile_cond(u, N, r):
+        ''' 
+        Function that computes first time step of wave 
+        for specific boundary conditions using truncated Taylor expansion.
+        Bound. Cond: sin(5*pi*x) if 1/5 < x < 2/5, else 0
+        Includes boundary conditions u=0 at x=0 and x=N-1
+
+        Params:
+        - u: initial wave, used for iteration
+        - N: length of spatial discretisation
+        - r: constant (c * dt / dx)
+        Returns:
+        - u: first iteration of wave profile
+        '''
         for i in range(1, N):
             # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
             if x[i] <= (1/5) or x[i] >= (2/5):
@@ -57,6 +70,20 @@ def run_1_1():
         return u
 
     def propagate_wave_cond(u, N, Nt, r):
+        '''
+        Function that propagates wave using iteration method 
+        for wave: sin(5*pi*x) if 1/5 < x < 2/5, else 0
+        Includes boundary conditions u=0 at x=0 and x=N-1
+
+        Params:
+        - u: initial wave, used for iteration
+        - N: length of spatial discretisation
+        - Nt: number the time steps
+        - r: constant (c * dt / dx)
+        Returns:
+        - u: first iteration of wave profile
+
+        '''
         for n in range(1, Nt):
             for i in range(1, N):
                 if x[i] <= (1/5) or x[i] >= (2/5):
@@ -68,6 +95,18 @@ def run_1_1():
         return u 
 
     def initial_wave_profile(u, N, r):
+        ''' 
+        Function that computes first time step of wave 
+        for specific boundary conditions using truncated Taylor expansion.
+        Includes boundary conditions u=0 at x=0 and x=N-1
+
+        Params:
+        - u: initial wave, used for iteration
+        - N: length of spatial discretisation
+        - r: constant (c * dt / dx)
+        Returns:
+        - u: first iteration of wave profile
+        '''
         for i in range(1, N):
             # initial wave profile (displacement at time t=1) -> use Taylor expansion to find u[1, i]
             u[1, i] = u[0, i] + 0.5 * r**2 * (u[0, i+1] - 2*u[0, i] + u[0, i-1])
@@ -76,6 +115,20 @@ def run_1_1():
         return u
 
     def propagate_wave(u, N, Nt, r):
+        '''
+        Function that propagates wave using iteration method 
+        for wave: sin(5*pi*x) if 1/5 < x < 2/5, else 0
+        Includes boundary conditions u=0 at x=0 and x=N-1
+
+        Params:
+        - u: initial wave, used for iteration
+        - N: length of spatial discretisation
+        - Nt: number the time steps
+        - r: constant (c * dt / dx)
+        Returns:
+        - u: first iteration of wave profile
+
+        '''
         for n in range(1, Nt):
             for i in range(1, N):
                 u[n+1, i] = 2*u[n, i] - u[n-1, i] + r**2 * (u[n, i+1] - 2*u[n, i] + u[n, i-1])
