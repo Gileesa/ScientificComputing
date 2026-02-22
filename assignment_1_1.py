@@ -30,7 +30,7 @@ def initial_wave_profile_cond(u, N, r):
     return u
 
 
-def propagate_wave_cond(u, N, Nt, r):
+def propagate_wave_cond(u, N, Nt, x, r):
     '''
     Function that propagates wave using iteration method 
     for wave: sin(5*pi*x) if 1/5 < x < 2/5, else 0
@@ -101,7 +101,7 @@ def propagate_wave(u, N, Nt, r):
 
 
 # Question C
-def animate_wave(u_matrix, filename, equation="", dt):
+def animate_wave(u_matrix, filename, dt, T, equation=""):
     '''
     Function that animates a wave in 2D
     Assumes each row in the u_matrix is one time step
@@ -156,7 +156,7 @@ def animate_wave(u_matrix, filename, equation="", dt):
     plt.show()
 
 # Question B
-def plot_wave(u, eq, filename):
+def plot_wave(u, eq, Nt, dt, x, filename):
     cmap = plt.get_cmap('plasma', Nt)
     for i in range(0, Nt):
         t = i * dt
@@ -176,15 +176,8 @@ def plot_wave(u, eq, filename):
 
 def run_1_1():
     '''
-    Question A
-    Discretize the wave equation, and write it in a form suitable for implementing in a computer program. 
-    Assume that the boundaries are fixed, Ψ(x =0,t) = 0, Ψ(x = L,t) = 0. 
-    L is the length of the string. 
-    Take L = 1 for simplicity.
-    Divide the string in N intervals, so that the interval length is ∆x = L/N. 
-    Also consider the boundary cases. 
-    If you use Euler’s method, you need to use both Ψ(x,t) and Ψt(x,t) as variables.
-    Or use the stepping method from the lectures, which uses Ψ at the two most recent time points to calculate it at the next one.
+    Function that runs full wave equation pipeline.
+
     '''
     
     L = 1 # length of the string
@@ -217,8 +210,6 @@ def run_1_1():
     y[0, 0] = 0.0
     y[0, -1] = 0.0
 
-
-
     # create waves for different init cond.
     u = initial_wave_profile(u, N, r)
     u = propagate_wave(u, N, Nt, r)
@@ -227,21 +218,17 @@ def run_1_1():
     y = initial_wave_profile(y, N, r)
     y = propagate_wave(y, N, Nt, r)
 
-
     # Question B
-    plot_wave(u, 'sin(2πx)', "wave_sin(2πx)")
-    plot_wave(v, 'sin(5πx)', "wave_sin(5πx)")
-    plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0', "wave_sin(5πx)_boundaries")
-
-
+    plot_wave(u, 'sin(2πx)', Nt, dt, x, "wave_sin(2πx)")
+    plot_wave(v, 'sin(5πx)', Nt, dt, x, "wave_sin(5πx)")
+    plot_wave(y, 'sin(5πx), if 1/5 < x < 2/5 else Ψ = 0', Nt, dt, x, "wave_sin(5πx)_boundaries")
 
     # Question C
-    animate_wave(u, "sin(2πx)")
-    animate_wave(v, "sin(5πx)")
-    animate_wave(y, "sin(5πx)", equation="if 1/5 < x < 2/5 else Ψ = 0")
-
-
+    animate_wave(u, "sin(2πx)", dt, T)
+    animate_wave(v, "sin(5πx)", dt, T)
+    animate_wave(y, "sin(5πx)", dt, T, equation="if 1/5 < x < 2/5 else Ψ = 0")
 
     print("all saved")
     print("1.1 finished running")
 
+run_1_1()
