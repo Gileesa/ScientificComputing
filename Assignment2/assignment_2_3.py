@@ -182,6 +182,7 @@ def create_animation(matrices_over_time,  title):
     
     Params:
     - matrices_over_time: list of matrices, each matrix representing 1 timestep.
+    - title: title string, for top of plot
     '''
     fig, ax = plt.subplots()
 
