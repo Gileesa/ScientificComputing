@@ -23,10 +23,27 @@ Dv = 0.08
 Du = 0.16
 
 
+def update_diffusion_term(matrix):
+    ''' 
+    Function that takes a concentration matrix and 
+    returns the diffusion term for updating it for 1 time step,
+    according to Gray-Scott model and finite-difference scheme.
+    '''
+    diffusion_term = (
+        matrix[2:, 1:-1] +    # x+1; 2 because we need neigbours to the right 
+        matrix[:-2, 1:-1] +   # x-1; 2 because interior point is Nx-2
+        matrix[1:-1, 2:] +    # y+1
+        matrix[1:-1, :-2] -   # y-1
+        4 * matrix[1:-1, 1:-1]
+    )
+    return diffusion_term
+
+
 def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     ''' 
     Function that updates concentration matrix for substance V for 1 time step.
     Contains diffusion, reaction and decay terms according to Gray-Scott model.
+    Includes reflecting (Von Neumann) boundary conditions.
 
     Params:
     - umatrix [np.ndarray]: the concentration matrix for substance U
@@ -46,18 +63,9 @@ def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     if alpha > 0.25:
         raise ValueError("Unstable constant: alpha value must be ≤ 0.25. Current value: ", alpha)
     
-    # determine max x and y shapes of matrix
-    Ny, Nx = vmatrix.shape
     next_matrix = vmatrix.copy()
     
-    diffusion_term = (
-        vmatrix[2:, 1:-1] +    # x+1; 2 because we need neigbours to the right 
-        vmatrix[:-2, 1:-1] +   # x-1; 2 because interior point is Nx-2
-        vmatrix[1:-1, 2:] +    # y+1
-        vmatrix[1:-1, :-2] -   # y-1
-        4 * vmatrix[1:-1, 1:-1]
-    )
-
+    diffusion_term = update_diffusion_term(vmatrix)
     reaction_term = umatrix[1:-1, 1:-1] * vmatrix[1:-1,1:-1]**2
     decay_term = (f + k) * vmatrix[1:-1,1:-1]
 
@@ -82,6 +90,7 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     ''' 
     Function that updates concentration matrix for substance U for 1 time step.
     Contains diffusion, reaction and replenish terms according to Gray-Scott model.
+    Includes reflecting (Von Neumann) boundary conditions.
 
     Params:
     - umatrix [np.ndarray]: the concentration matrix for substance U
@@ -104,14 +113,7 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     Ny, Nx = umatrix.shape
     next_matrix = umatrix.copy()
     
-    diffusion_term = (
-        umatrix[2:, 1:-1] +    # x+1; 2 because we need neigbours to the right 
-        umatrix[:-2, 1:-1] +   # x-1; 2 because interior point is Nx-2
-        umatrix[1:-1, 2:] +    # y+1
-        umatrix[1:-1, :-2] -   # y-1
-        4 * umatrix[1:-1, 1:-1]
-    )
-
+    diffusion_term = update_diffusion_term(umatrix)
     reaction_term = umatrix[1:-1, 1:-1] * vmatrix[1:-1, 1:-1]**2
     replenish_term = f * (np.ones((Ny-2, Nx-2)) - umatrix[1:-1, 1:-1])
 
@@ -132,6 +134,19 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     return next_matrix
 
 def init_vmatrix(N, r, c):
+    '''
+    Function that initialises concentration matrix for substance V.
+    Matrix will be all-zero values except for a square of rxr in the center,
+    which will have cells with value c.
+    
+    Params:
+    - N: size of concentration matrix for substance V (NxN)
+    - r: length of square in centre
+    - c: concentration for cells inside square
+    
+    Returns:
+    - vmatrix: initialise concentration matrix for substance V.
+    '''
     vmatrix = np.zeros((N,N))
 
     # create square
@@ -151,6 +166,7 @@ def run_gray_scott(N, r, c_v_init, f,Dv,Du,dt,dx,k):
     u_matrices = [umatrix]
     v_matrices = [vmatrix]
 
+    # TODO: we might want to apply Strang splitting (operator splitting)
     for _ in range(N_t):
         umatrix = update_u_one_step(umatrix, vmatrix, f,Du,dt,dx)
         u_matrices.append(umatrix)
