@@ -5,6 +5,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 from matplotlib.animation import FuncAnimation
+import os
 
 N = 200 # number of x and y steps
 
@@ -38,6 +39,15 @@ def update_diffusion_term(matrix):
     )
     return diffusion_term
 
+def l2_norm_u(diff_term, reaction_term, replenish_term, matrix, Du, dx):
+    time_derivative = (Du/dx**2) * diff_term - reaction_term + replenish_term
+    dy = dx
+    return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
+
+def l2_norm_v(diff_term, reaction_term, decay_term, matrix, Dv, dx):
+    time_derivative = (Dv/dx**2) * diff_term + reaction_term - decay_term
+    dy = dx
+    return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
 
 def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     ''' 
@@ -66,15 +76,20 @@ def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     next_matrix = vmatrix.copy()
     
     diffusion_term = update_diffusion_term(vmatrix)
-    reaction_term = umatrix[1:-1, 1:-1] * vmatrix[1:-1,1:-1]**2
-    decay_term = (f + k) * vmatrix[1:-1,1:-1]
+    reaction_term = (umatrix[1:-1, 1:-1] * vmatrix[1:-1,1:-1]**2)
+    decay_term = ((f + k) * vmatrix[1:-1,1:-1])
 
     next_matrix[1:-1, 1:-1] = (
         vmatrix[1:-1, 1:-1]
         + alpha * diffusion_term
-        + reaction_term
-        - decay_term
+        + dt * reaction_term
+        - dt * decay_term
     )
+
+    #SOR version
+    # step 1: update 'red' cells
+    # step 2: update 'black' cells
+    # step 3: combine into next_matrix
 
     # implement reflecting boundary conditions
     # here, vmatrix(-1,j) = vmatrix(1,j) etc.
@@ -83,7 +98,8 @@ def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     next_matrix[:, 0]  = vmatrix[:, 1]
     next_matrix[:, -1] = vmatrix[:, -2]
 
-    return next_matrix
+    l2_norm = l2_norm_v(diffusion_term, reaction_term, decay_term, next_matrix, Dv, dx)
+    return next_matrix, l2_norm
 
 def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
 
@@ -114,14 +130,14 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     next_matrix = umatrix.copy()
     
     diffusion_term = update_diffusion_term(umatrix)
-    reaction_term = umatrix[1:-1, 1:-1] * vmatrix[1:-1, 1:-1]**2
-    replenish_term = f * (np.ones((Ny-2, Nx-2)) - umatrix[1:-1, 1:-1])
+    reaction_term = (umatrix[1:-1, 1:-1] * vmatrix[1:-1, 1:-1]**2)
+    replenish_term = ( f * (np.ones((Ny-2, Nx-2)) - umatrix[1:-1, 1:-1]))
 
     next_matrix[1:-1, 1:-1] = (
         umatrix[1:-1, 1:-1]
         + alpha * diffusion_term
-        - reaction_term
-        + replenish_term
+        - dt * reaction_term
+        + dt * replenish_term
     )
 
     # implement reflecting boundary conditions
@@ -131,7 +147,8 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     next_matrix[:, 0]  = umatrix[:, 1]
     next_matrix[:, -1] = umatrix[:, -2]
 
-    return next_matrix
+    l2_norm = l2_norm_u(diffusion_term, reaction_term, replenish_term, next_matrix, Dv, dx)
+    return next_matrix, l2_norm
 
 def init_vmatrix(N, r, c):
     '''
@@ -165,15 +182,20 @@ def run_gray_scott(N, r, c_v_init, f,Dv,Du,dt,dx,k):
 
     u_matrices = [umatrix]
     v_matrices = [vmatrix]
+    unorms = []
+    vnorms = []
 
     # TODO: we might want to apply Strang splitting (operator splitting)
     for _ in range(N_t):
-        umatrix = update_u_one_step(umatrix, vmatrix, f,Du,dt,dx)
+        umatrix, unorm = update_u_one_step(umatrix, vmatrix, f,Du,dt,dx)
         u_matrices.append(umatrix)
-        vmatrix = update_v_one_step(umatrix, vmatrix, f,Dv,dt,dx,k)
-        v_matrices.append(vmatrix)
+        unorms.append(unorm)
 
-    return u_matrices, v_matrices
+        vmatrix, vnorm = update_v_one_step(umatrix, vmatrix, f,Dv,dt,dx,k)
+        v_matrices.append(vmatrix)
+        vnorms.append(vnorm)
+
+    return u_matrices, v_matrices, unorms, vnorms
 
 
 def create_animation(matrices_over_time,  title):
@@ -215,12 +237,84 @@ def create_animation(matrices_over_time,  title):
     plt.show()
     plt.close(fig)
 
+def plot_last_frame(matrix, title):
+    """
+    Plots the last matrix as a heatmap
+    and saves it to Figures/2.3 as a PNG.
+    """
 
+    save_dir = "Figures/2.3"
+    os.makedirs(save_dir, exist_ok=True)
+
+    plt.figure()
+    im = plt.imshow(matrix, vmin=0, vmax=1)
+    
+    cbar = plt.colorbar(im)
+    cbar.set_label("Concentration")
+
+    plt.title(title)
+
+    filename = title.replace(" ", "_") + ".png"
+    save_path = os.path.join(save_dir, filename)
+
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.show()
+    plt.close()
+
+    print(f"Saved heatmap to {save_path}")
+
+
+def plot_l2_norm_over_time(norms, dt, title="L² Norm Over Time"):
+    """
+    Plots the L² norm of a system over time.
+
+    Params:
+    - l2_norms [list or np.ndarray]: L² norm values at each timestep
+    - dt [float]: time step size
+    - title [str]: plot title
+    """
+    times = [i * dt for i in range(len(unorms))]
+
+    plt.figure(figsize=(6,4))
+    plt.plot(times, norms, color='blue', lw=2)
+    plt.xlabel("Time")
+    plt.ylabel("L² Norm")
+    plt.title(title)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+# Mitosis
+Du = 0.14
+Dv = 0.06
+f  = 0.035
+k  = 0.065
+u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
+# create_animation(v_matrices, "V over time")
+# create_animation(u_matrices, "U over time")
+plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time")
+plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time")
+
+# Coral Pattern
 Du = 0.16
 Dv = 0.08
-f  = 0.026
-k  = 0.051
+f  = 0.060
+k  = 0.062
+u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
+# create_animation(v_matrices, "V over time")
+plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
 
-u_matrices, v_matrices = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
-create_animation(v_matrices, "V over time")
-# create_animation(u_matrices, "U over time")
+# Spirals
+Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
+u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
+# create_animation(v_matrices, "V over time")
+plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+
+# Zebra fish
+Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
+u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
+# create_animation(v_matrices, "V over time")
+plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+
