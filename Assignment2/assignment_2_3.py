@@ -14,7 +14,7 @@ dy = dx # y-step of simulation
 t_max = 10000 # max time of simulation
 
 dt = 1 # time step of simulation, set to be stable (D*dt/dx^2 <= 0.25)
-N_t = int(t_max/dt) # number of time steps 1 / (0.25 * 0.004 /1) = 1000 time steps
+N_t = int(t_max/dt) # number of time steps
 
 f = 0.035
 k = 0.060
@@ -24,7 +24,7 @@ Dv = 0.08
 Du = 0.16
 
 
-def update_diffusion_term(matrix):
+def update_diffusion_term(matrix:np.ndarray):
     ''' 
     Function that takes a concentration matrix and 
     returns the diffusion term for updating it for 1 time step,
@@ -39,17 +39,17 @@ def update_diffusion_term(matrix):
     )
     return diffusion_term
 
-def l2_norm_u(diff_term, reaction_term, replenish_term, matrix, Du, dx):
+def l2_norm_u(diff_term:float, reaction_term:float, replenish_term:float, matrix:np.ndarray, Du:float, dx:float):
     time_derivative = (Du/dx**2) * diff_term - reaction_term + replenish_term
     dy = dx
     return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
 
-def l2_norm_v(diff_term, reaction_term, decay_term, matrix, Dv, dx):
+def l2_norm_v(diff_term:float, reaction_term:float, decay_term:float, matrix:np.ndarray, Dv:float, dx:float):
     time_derivative = (Dv/dx**2) * diff_term + reaction_term - decay_term
     dy = dx
     return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
 
-def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
+def update_v_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float, dt:float, dx:float, k:float):
     ''' 
     Function that updates concentration matrix for substance V for 1 time step.
     Contains diffusion, reaction and decay terms according to Gray-Scott model.
@@ -86,7 +86,7 @@ def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
         - dt * decay_term
     )
 
-    #SOR version
+    # TODO: SOR version
     # step 1: update 'red' cells
     # step 2: update 'black' cells
     # step 3: combine into next_matrix
@@ -101,7 +101,7 @@ def update_v_one_step(umatrix, vmatrix, f, D, dt, dx, k):
     l2_norm = l2_norm_v(diffusion_term, reaction_term, decay_term, next_matrix, Dv, dx)
     return next_matrix, l2_norm
 
-def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
+def update_u_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float, dt:float, dx:float):
 
     ''' 
     Function that updates concentration matrix for substance U for 1 time step.
@@ -150,7 +150,7 @@ def update_u_one_step(umatrix, vmatrix, f, D, dt, dx):
     l2_norm = l2_norm_u(diffusion_term, reaction_term, replenish_term, next_matrix, Dv, dx)
     return next_matrix, l2_norm
 
-def init_vmatrix(N, r, c):
+def init_vmatrix(N: int, r: float, c: float):
     '''
     Function that initialises concentration matrix for substance V.
     Matrix will be all-zero values except for a square of rxr in the center,
@@ -176,7 +176,21 @@ def init_vmatrix(N, r, c):
     return vmatrix
 
 
-def run_gray_scott(N, r, c_v_init, f,Dv,Du,dt,dx,k):
+def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float,dt: float,dx: float, k:float,):
+    '''
+    Function that runs full Gray-Scott reaction-diffusion pipeline.
+
+    Params:
+    - N: number of grid points along one axis
+    - r: length of one side of the square in the centre of the initial V-matrix
+    - c_v_init: concentration of V in square in initial V-matrix
+    - f: constant that controls rate of replenishing of U
+    - Dv: diffusion constant for V
+    - Du: diffusion constant for u
+    - dt: time step size
+    - dx: length of 1 grid side; dy=dx
+    - k: constant that controls decay of U together with constant f
+    '''
     umatrix = np.full((N,N), 0.5)
     vmatrix = init_vmatrix(N, r, c_v_init)
 
@@ -198,7 +212,7 @@ def run_gray_scott(N, r, c_v_init, f,Dv,Du,dt,dx,k):
     return u_matrices, v_matrices, unorms, vnorms
 
 
-def create_animation(matrices_over_time,  title):
+def create_animation(matrices_over_time:list[np.ndarray],  title: str):
     '''
     Creates animation for concentration over time.
     
@@ -237,7 +251,7 @@ def create_animation(matrices_over_time,  title):
     plt.show()
     plt.close(fig)
 
-def plot_last_frame(matrix, title):
+def plot_last_frame(matrix:np.ndarray, title: str):
     """
     Plots the last matrix as a heatmap
     and saves it to Figures/2.3 as a PNG.
@@ -264,12 +278,12 @@ def plot_last_frame(matrix, title):
     print(f"Saved heatmap to {save_path}")
 
 
-def plot_l2_norm_over_time(norms, dt, title="L² Norm Over Time"):
+def plot_l2_norm_over_time(norms, dt: float, title: str="L² Norm Over Time"):
     """
     Plots the L² norm of a system over time.
 
     Params:
-    - l2_norms [list or np.ndarray]: L² norm values at each timestep
+    - norms [list or np.ndarray]: L² norm values at each timestep
     - dt [float]: time step size
     - title [str]: plot title
     """
@@ -296,6 +310,8 @@ u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,
 plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs: \n Du={Du}, Dv={Dv}, f={f}, k={k}")
 plot_l2_norm_over_time((unorms), dt, title="L² Norm of U Over Time (Mitosis)")
 plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Mitosis)")
+total_norm = np.array(unorms) + np.array(vnorms)
+plot_l2_norm_over_time(total_norm, dt, title="Total L² Norm Over Time (Mitosis)")
 
 # Coral Pattern
 Du = 0.16
@@ -307,6 +323,8 @@ u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,
 plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs: \n Du={Du}, Dv={Dv}, f={f}, k={k}")
 plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Coral)")
 plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Coral)")
+total_norm = np.array(unorms) + np.array(vnorms)
+plot_l2_norm_over_time(total_norm, dt, title="Total L² Norm Over Time (Coral)")
 
 # Spirals
 Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
