@@ -305,16 +305,22 @@ k  = 0.062
 u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
 # create_animation(v_matrices, "V over time")
 plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time")
+plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time")
 
 # Spirals
 Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
 u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
 # create_animation(v_matrices, "V over time")
 plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Spiral)")
+plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Spiral)")
 
 # Zebra fish
 Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
 u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
 # create_animation(v_matrices, "V over time")
 plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs Du={Du}, Dv={Dv}, f={f}, k={k}")
+plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Zebra)")
+plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Zebra)")
 
