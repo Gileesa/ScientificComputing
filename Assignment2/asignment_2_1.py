@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.animation import FuncAnimation
 
 def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
     """
@@ -42,7 +43,7 @@ def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 10
     return c, cluster, obj_matrix
 
 
-def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), bottom = 0, top = 1, save_snap = False):
+def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), bottom = 0, top = 1, save_snap = False, verbose = False):
     """
     This function solves a 2D Laplace equation using the Successive Over-Relaxation (SOR) method.
     We have the following boundary conditions:
@@ -101,9 +102,10 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), botto
 
         if save_snap:
             c_over_time.append(c.copy())
-
+        
         if delta < epsilon:
-            print(f"SOR omega={omega}, board size={Ny} converged after {iteration + 1} iterations.")
+            if verbose:
+                print(f"SOR omega={omega}, board size={Ny} converged after {iteration + 1} iterations.")
             return c, np.array(delta_list), (iteration + 1), np.array(c_over_time)
 
     print("WARNING: reached max_iteration without convergence.")
@@ -190,7 +192,7 @@ def growth(cluster, obj_matrix, eta, c, candidates):
 
     return chosen_position, probabilities, candidate_list, candidate_concentrations, obj_matrix
 
-def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top = 1, omega = 1.75, eta = 1.0, max_sor_iterations = 1000, save_snap = False, seed = None):
+def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top = 1, omega = 1.75, eta = 1.0, max_sor_iterations = 1000, save_snap = False, seed = None, save_every_step=True, progress_every=50):
     """
     This fumction simulates a Laplace growth DLA for a given number of growth steps.
     At each step, 
@@ -213,6 +215,8 @@ def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top
     - cluster: A 2D boolean array representing the final state of the DLA cluster after the specified number of growth steps.
     
     """
+
+    frames = []
 
     if seed is not None:
         np.random.seed(seed)
@@ -244,6 +248,8 @@ def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top
             save_snap=False
         )
 
+        c_solved = np.clip(c_solved, 0, 1)
+
         # Find candidate positions for growth
         candidates = find_candidates(cluster)
         history["candidate_counts"].append(len(candidates))
@@ -267,39 +273,161 @@ def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top
 
         c = c_solved
 
-        print(f"Growth step {step+1}/{steps} | cluster size = {cluster.sum()} | SOR iterations = {iteration_used}")
+        # SAVE FRAME
+        if save_every_step:
+            frames.append(cluster.astype(np.uint8).copy())
+
+        if progress_every and (step + 1) % progress_every == 0:
+            left = steps - (step + 1)
+            print(f"Growth step {step+1}/{steps} | cluster size = {cluster.sum()} | SOR iterations = {iteration_used}")
+
+    return cluster, obj_matrix, c, history, frames 
 
 
-    return cluster, obj_matrix, c, history
+def build_growth_time_grid(chosen_positions, grid_size, interval=25, tail=50):
+    """
+    This function builds a grid that records the time step at which each position in the cluster was occupied during the growth process.
+    The grid is initialized with NaN values to indicate empty positions, and the seed position is set to 0.
+    As particles are added to the cluster, the corresponding positions in the grid are updated with the time step at which they were occupied.
+    Returns an array where:
+    - NaN = empty (white background)
+    - 0 = seed (black)
+    - 1,2,3,... = time step when particle was added
+    """
+    T = np.full((grid_size, grid_size), np.nan)
+
+    center = (grid_size // 2, grid_size // 2)
+    T[center] = 0  # seed
+
+    for t, pos in enumerate(chosen_positions, start=1):
+        T[pos] = t
+
+    max_t = int(np.nanmax(T))
+    fig, ax = plt.subplots()
+
+    img = np.full_like(T, np.nan, dtype=float)
     
-c, cluster, obj_matrix = initialize_dla_laplace()
+    im = ax.imshow(
+        img, 
+        origin="lower", 
+        cmap = "rainbow",
+        vmin=0, 
+        vmax=tail)
 
-c_solved, deltas, iteration_used, c_over_time = sor_iteration(
-    c, 
-    omega = 1.75, 
-    max_iteration = 1000, 
-    obj_matrix = obj_matrix)
+    im.cmap.set_bad(color="white")
 
-candidates = find_candidates(cluster)
-chosen_pos, probs, cand_list, cand_vals, obj_matrix = growth(
-    cluster, 
-    obj_matrix, 
-    eta=1.0, 
-    c=c_solved, 
-    candidates=candidates
+    def update(k):
+        # show sites grown up to time k
+        grown = (~np.isnan(T)) & (T <= k)
+
+        # start with white background everywhere
+        img = np.full_like(T, np.nan, dtype=float)
+
+        # mark all grown sites as "old"
+        img[grown] = -1.0
+
+        # recent sites: age = k - T (0 = newest)
+        recent = grown & ((k - T) <= tail)
+        img[recent] = (tail - (k - T[recent]))  # newest -> tail, older -> smaller
+
+        # make a masked array so NaNs stay white
+        m = np.ma.masked_invalid(img)
+        im.set_data(m)
+
+        # black for old points (value -1)
+        im.cmap.set_under("black")
+
+        ax.set_title(f"Laplace Growth")
+        return (im,)
+
+    ani = FuncAnimation(
+        fig, 
+        update, 
+        frames=max_t + 1, 
+        interval=interval, 
+        blit=True)
+
+    return ani, fig, update, max_t
+
+def eta_experiment(eta_list, omega, steps, grid_size, seed, progress_every, max_sor_iterations, interval, tail):
+    """
+    This function runs the DLA simulation for different values of eta and saves the resulting clusters and growth animations.
+    """
+
+    for eta in eta_list:
+        cluster, obj_matrix, c, hist = diffusion_limited_aggregation(
+            steps=steps,
+            grid_size=grid_size,
+            eta=eta,
+            omega=omega,
+            seed=seed,
+            save_every_step=False,
+            progress_every=progress_every,
+            max_sor_iterations= max_sor_iterations
+        )
+
+        plt.figure(figsize=(6, 6))
+        plt.imshow(
+            cluster, 
+            origin="lower", 
+            interpolation = "nearest",
+            vmin = 0, 
+            vmax = 1,
+            cmap="gray")
+        
+        plt.title(f"DLA cluster | eta={eta} | omega={omega}")
+
+        plt.savefig(f"Figures/2.1/dla_cluster_eta_{eta}_omega_{omega}.png", dpi=120)
+        plt.close()
+
+        build_growth_time_grid(
+                hist["chosen_positions"],
+                grid_size=grid_size,
+                interval=interval,
+                tail=tail,
+            )
+        
+        ani, fig, update, max_t = build_growth_time_grid(
+            hist["chosen_positions"],
+            grid_size=grid_size,
+            interval=interval,
+            tail=tail
+        )
+
+        gif_name = f"Figures/2.1/eta/dla_growth_eta_{eta}_omega_{omega}.gif"
+        ani.save(gif_name, dpi=120, writer="pillow")
+
+        # save final frame png
+        update(max_t)
+        fig.savefig(f"Figures/2.1/eta/dla_growth_final_eta_{eta}_omega_{omega}.png",
+                    dpi=150, bbox_inches="tight")
+        plt.close(fig)
+
+        print(f"Saved eta={eta}, omega={omega}")
+
+# Run the DLA for different eta values and save the results
+eta_list = [0.0, 0.5, 1.0, 2.0]
+eta_experiment(
+    eta_list=eta_list,
+    omega=1.75,
+    steps=1000,
+    grid_size=100,
+    seed=0,
+    progress_every=50,
+    max_sor_iterations=1000,
+    interval=50,
+    tail=50
 )
 
-cluster, obj_matrix, c, hist = diffusion_limited_aggregation(
-    steps=300, 
-    grid_size=100, 
-    eta=1.0, 
-    omega=1.75, 
-    seed=0
-)
 
-plt.imshow(cluster, origin="lower", interpolation="nearest")
-plt.title("Laplace-growth DLA cluster")
-plt.show()
-    
-
+# cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
+#     steps=1000, 
+#     grid_size=100, 
+#     eta=1.0, 
+#     omega=1.75, 
+#     seed=0,
+#     save_every_step=False,
+#     progress_every=50
+# )
+# simulation = build_growth_time_grid(hist["chosen_positions"], grid_size=100, interval=25, tail=50)
 
