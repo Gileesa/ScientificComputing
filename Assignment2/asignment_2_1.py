@@ -1,17 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import random
-from matplotlib.animation import FuncAnimation
 
-probability_sticking = 0.5
-
-def diffusion_limited_aggregation(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
+def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
     """
-    This function simulates diffusion-limited aggregation (DLA) in a 2D grid. 
-    It starts with a seed particle at the center of the grid and randomly releases particles from the edges.
-    The particles perform a random walk until they either stick to the existing cluster or move out of bounds. 
-    The process continues until a specified number of particles have been added to the cluster.
+    This function initializes the state for Laplace growth in a diffusion-limited aggregation (DLA) process. 
+    It sets up a 2D grid with specified boundary conditions and initializes the concentration field and cluster.
     param: 
     grid_size: The size of the 2D grid (N = 100 for a 100x100 grid).
     bottom: The value at the bottom boundary (default is 0).
@@ -139,11 +133,13 @@ def find_candidates(cluster, neighbourhood = [(-1, 0), (1, 0), (0, -1), (0, 1)])
     return candidates
 
 
-def growth(eta, c, candidates):
+def growth(cluster, obj_matrix, eta, c, candidates):
     """
     The function chooses the side to grow, which has a higher concentration value, with a probability proportional to the concentration values of the candidate positions.
    
     Parameters:
+    - cluster: A 2D boolean array representing the current state of the DLA cluster, where True indicates the presence of a particle and False indicates empty space.
+    - obj_matrix: A 2D integer array representing the presence of objects in the grid, where 1 indicates the presence of an object and 0 indicates free space. This matrix is used to update the concentration field after growth.
     - eta: float. A parameter that controls the influence of the concentration values on the growth probability.
     - c: numpy array. A 2D array representing the concentration field.    
     - candidates: A list of tuples, where each tuple contains the (row, column) indices of a candidate position for growth.
@@ -157,55 +153,151 @@ def growth(eta, c, candidates):
     candidate_concentrations = []
 
     for (j, i) in candidate_list:
-        candidate_concentrations.append(c[j, i])
+        concentration = c[j, i]
+        if concentration < 0:
+            print(f"WARNING: Negative concentration value {concentration} at position ({j}, {i}). Setting it to zero.")
+            concentration = 0.0
+        candidate_concentrations.append(concentration)
+
+
 
     # Convert the concentration values into weights 
     weights = []
 
-    for conc in candidate_concentrations:
-        weights.append(conc ** eta)
-    
+    if eta == 0:
+        weights = [1] * len(candidate_concentrations)  # Equal weights for all candidates
+    else:
+        for conc in candidate_concentrations:
+            weights.append(conc ** eta)
     weights_sum = sum(weights)
 
     # Compute the probabilities for each candidate position
     probabilities = []
 
-    for weight in weights:
-        probabilities.append(weight / weights_sum)
+    if weights_sum == 0:
+        print("WARNING: All candidate concentrations are zero.")
+    else:
+        for weight in weights:
+            probabilities.append(weight / weights_sum)
 
-    
     # Choose a candidate position based on the computed probabilities
     chosen_index = np.random.choice(len(candidate_list), p=probabilities)
-    chosen_position = candidate_list[chosen_index]
+    chosen_position = tuple(candidate_list[chosen_index])
 
     cluster[chosen_position] = True  # Update the cluster with the new growth
 
-    return chosen_position
+    obj_matrix[chosen_position] = 1  # Update the object matrix to reflect the new growth
+
+    return chosen_position, probabilities, candidate_list, candidate_concentrations, obj_matrix
+
+def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top = 1, omega = 1.75, eta = 1.0, max_sor_iterations = 1000, save_snap = False, seed = None):
+    """
+    This fumction simulates a Laplace growth DLA for a given number of growth steps.
+    At each step, 
+        1. we solve the Laplace equation using the SOR method to find the concentration field,
+        2. identify candidate positions for growth, and then 
+        3. choose a position to grow based on the concentration values at the candidate positions.
+        4. Update the cluster and object matrix accordingly.
+    
+    Parameters:
+    - steps: int. The number of growth steps to simulate (default is 1000).
+    - grid_size: int. The size of the 2D grid (default is 100
+    - bottom: float. The value at the bottom boundary (default is 0).
+    - top: float. The value at the top boundary (default is 1).
+    - omega: float. The relaxation factor for the SOR method (default is 1.75).
+    - eta: float. A parameter that controls the influence of the concentration values on the growth probability (default is 1.0).
+    - max_sor_iterations: int. The maximum number of iterations for the SOR method (default is 1000).
+    - save_snap: bool. Whether to save snapshots of the concentration field at each SOR iteration (default is False).
+    
+    Returns:
+    - cluster: A 2D boolean array representing the final state of the DLA cluster after the specified number of growth steps.
+    
+    """
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    # initialize the concentration field, cluster, and object matrix
+    c, cluster, obj_matrix = initialize_dla_laplace(grid_size=grid_size, bottom=bottom, top=top)
+
+    history = {
+        "concentration_fields": [],
+        "candidate_positions": [],
+        "chosen_positions": [],
+        "candidate_concentrations": [],
+        "growth_probabilities": [],
+        "candidate_counts": [],
+        "SOR_iterations": []
+    }
+
+    # Simulate the growth process for the specified number of steps
+    for step in range(steps):
+        # Solve the Laplace equation using SOR to get the concentration field
+        c_solved, deltas, iteration_used, c_over_time = sor_iteration(
+            c, 
+            omega=omega,
+            max_iteration=max_sor_iterations,
+            obj_matrix=obj_matrix,
+            epsilon=10**(-5),
+            bottom=bottom,
+            top=top,
+            save_snap=False
+        )
+
+        # Find candidate positions for growth
+        candidates = find_candidates(cluster)
+        history["candidate_counts"].append(len(candidates))
+        history["SOR_iterations"].append(iteration_used)
+
+        # Choose a position to grow based on the concentration values at the candidate positions
+        chosen_pos, probs, cand_list, cand_vals, obj_matrix = growth(
+            cluster, 
+            obj_matrix, 
+            eta, 
+            c_solved, 
+            candidates
+        )
+
+        # Update the history for analysis and visualization
+        history["concentration_fields"].append(c_solved.copy())
+        history["candidate_positions"].append(cand_list)
+        history["chosen_positions"].append(chosen_pos)
+        history["candidate_concentrations"].append(cand_vals)
+        history["growth_probabilities"].append(probs)
+
+        c = c_solved
 
 
+    return cluster, obj_matrix, c, history
+    
+c, cluster, obj_matrix = initialize_dla_laplace()
 
-
-
-
-
-
-
-
-
-
-c, cluster, obj_matrix = diffusion_limited_aggregation()
-
-c_solved, deltas, k_used, _ = sor_iteration(
+c_solved, deltas, iteration_used, c_over_time = sor_iteration(
     c, 
     omega = 1.75, 
     max_iteration = 1000, 
     obj_matrix = obj_matrix)
 
-plt.imshow(c_solved, origin="lower")
-plt.colorbar()
-plt.title("Concentration field after SOR convergence")
-plt.show()
-
 candidates = find_candidates(cluster)
-print(len(candidates))  # should be 4
-print(candidates)
+chosen_pos, probs, cand_list, cand_vals, obj_matrix = growth(
+    cluster, 
+    obj_matrix, 
+    eta=1.0, 
+    c=c_solved, 
+    candidates=candidates
+)
+
+cluster, obj_matrix, c, hist = diffusion_limited_aggregation(
+    steps=300, 
+    grid_size=100, 
+    eta=1.0, 
+    omega=1.75, 
+    seed=0
+)
+
+plt.imshow(cluster, origin="lower", interpolation="nearest")
+plt.title("Laplace-growth DLA cluster")
+plt.show()
+    
+
+
