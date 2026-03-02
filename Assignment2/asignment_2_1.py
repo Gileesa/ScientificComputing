@@ -4,8 +4,6 @@ import pandas as pd
 import random
 from matplotlib.animation import FuncAnimation
 
-
-neighbourhood = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 probability_sticking = 0.5
 
 def diffusion_limited_aggregation(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
@@ -115,7 +113,83 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), botto
             return c, np.array(delta_list), (iteration + 1), np.array(c_over_time)
 
     print("WARNING: reached max_iteration without convergence.")
-    return c, np.array(delta_list), (k + 1), np.array(c_over_time)
+    return c, np.array(delta_list), (iteration + 1), np.array(c_over_time)
+
+
+def find_candidates(cluster, neighbourhood = [(-1, 0), (1, 0), (0, -1), (0, 1)]):
+    """
+    This function identifies the candidate positions for growth in a diffusion-limited aggregation (DLA) cluster.
+    It checks the neighboring positions of the existing cluster and returns those that are adjacent to the cluster but not part of it.
+
+    Parameters:
+    - cluster: A 2D boolean array representing the current state of the DLA cluster, where True indicates the presence of a particle and False indicates empty space.
+
+    Returns:
+    - candidates: A list of tuples, where each tuple contains the (row, column) indices of a candidate position for growth.
+    """
+    candidates = set()  # avoid duplicates
+    for j in range(cluster.shape[0]):
+        for i in range(cluster.shape[1]):
+            if cluster[j, i]:  # If there is a particle at this position
+                for dj, di in neighbourhood:  # Check its neighbors
+                    nj, ni = j + dj, i + di
+                    if 0 <= nj < cluster.shape[0] and 0 <= ni < cluster.shape[1]:  # Check bounds
+                        if not cluster[nj, ni]:  # If the neighbor is empty
+                            candidates.add((nj, ni))  # Add to candidates
+    return candidates
+
+
+def growth(eta, c, candidates):
+    """
+    The function chooses the side to grow, which has a higher concentration value, with a probability proportional to the concentration values of the candidate positions.
+   
+    Parameters:
+    - eta: float. A parameter that controls the influence of the concentration values on the growth probability.
+    - c: numpy array. A 2D array representing the concentration field.    
+    - candidates: A list of tuples, where each tuple contains the (row, column) indices of a candidate position for growth.
+
+    Returns:
+    - chosen_position: A tuple containing the (row, column) indices of the chosen position for growth.
+    """
+    candidate_list = np.array(list(candidates))
+
+    # Get the concentration values at the candidate positions
+    candidate_concentrations = []
+
+    for (j, i) in candidate_list:
+        candidate_concentrations.append(c[j, i])
+
+    # Convert the concentration values into weights 
+    weights = []
+
+    for conc in candidate_concentrations:
+        weights.append(conc ** eta)
+    
+    weights_sum = sum(weights)
+
+    # Compute the probabilities for each candidate position
+    probabilities = []
+
+    for weight in weights:
+        probabilities.append(weight / weights_sum)
+
+    
+    # Choose a candidate position based on the computed probabilities
+    chosen_index = np.random.choice(len(candidate_list), p=probabilities)
+    chosen_position = candidate_list[chosen_index]
+
+    cluster[chosen_position] = True  # Update the cluster with the new growth
+
+    return chosen_position
+
+
+
+
+
+
+
+
+
 
 
 
@@ -131,3 +205,7 @@ plt.imshow(c_solved, origin="lower")
 plt.colorbar()
 plt.title("Concentration field after SOR convergence")
 plt.show()
+
+candidates = find_candidates(cluster)
+print(len(candidates))  # should be 4
+print(candidates)
