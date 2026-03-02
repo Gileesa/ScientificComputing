@@ -4,8 +4,9 @@
 
 import numpy as np
 import matplotlib.pylab as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 import os
+import re
 
 N = 200 # number of x and y steps
 
@@ -93,10 +94,10 @@ def update_v_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float
 
     # implement reflecting boundary conditions
     # here, vmatrix(-1,j) = vmatrix(1,j) etc.
-    next_matrix[0, :]  = vmatrix[1, :]
-    next_matrix[-1, :] = vmatrix[-2, :]
-    next_matrix[:, 0]  = vmatrix[:, 1]
-    next_matrix[:, -1] = vmatrix[:, -2]
+    next_matrix[0, :]  = next_matrix[1, :]
+    next_matrix[-1, :] = next_matrix[-2, :]
+    next_matrix[:, 0]  = next_matrix[:, 1]
+    next_matrix[:, -1] = next_matrix[:, -2]
 
     l2_norm = l2_norm_v(diffusion_term, reaction_term, decay_term, next_matrix, Dv, dx)
     return next_matrix, l2_norm
@@ -142,15 +143,15 @@ def update_u_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float
 
     # implement reflecting boundary conditions
     # here, umatrix(-1,j) = umatrix(1,j) etc.
-    next_matrix[0, :]  = umatrix[1, :]
-    next_matrix[-1, :] = umatrix[-2, :]
-    next_matrix[:, 0]  = umatrix[:, 1]
-    next_matrix[:, -1] = umatrix[:, -2]
+    next_matrix[0, :]  = next_matrix[1, :]
+    next_matrix[-1, :] = next_matrix[-2, :]
+    next_matrix[:, 0]  = next_matrix[:, 1]
+    next_matrix[:, -1] = next_matrix[:, -2]
 
     l2_norm = l2_norm_u(diffusion_term, reaction_term, replenish_term, next_matrix, Dv, dx)
     return next_matrix, l2_norm
 
-def init_vmatrix(N: int, r: float, c: float):
+def init_vmatrix(N: int, r: float, c: float, add_noise):
     '''
     Function that initialises concentration matrix for substance V.
     Matrix will be all-zero values except for a square of rxr in the center,
@@ -172,11 +173,18 @@ def init_vmatrix(N: int, r: float, c: float):
     start_x = N//2 - r//2
     end_x   = start_x + r
 
-    vmatrix[start_y:end_y, start_x:end_x] = c
+    if add_noise:
+        epsilon = 0.2  # noise strength
+        noise = epsilon * (2*np.random.rand(r, r) - 1)
+        vmatrix[start_y:end_y, start_x:end_x] = c + noise
+    else:
+        vmatrix[start_y:end_y, start_x:end_x] = c
+
+    vmatrix = np.clip(vmatrix, 0, None)
     return vmatrix
 
 
-def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float,dt: float,dx: float, k:float,):
+def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float,dt: float,dx: float, k:float, N_t:int, add_noise:bool=False):
     '''
     Function that runs full Gray-Scott reaction-diffusion pipeline.
 
@@ -192,7 +200,7 @@ def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float
     - k: constant that controls decay of U together with constant f
     '''
     umatrix = np.full((N,N), 0.5)
-    vmatrix = init_vmatrix(N, r, c_v_init)
+    vmatrix = init_vmatrix(N, r, c_v_init, add_noise)
 
     u_matrices = [umatrix]
     v_matrices = [vmatrix]
@@ -212,44 +220,73 @@ def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float
     return u_matrices, v_matrices, unorms, vnorms
 
 
-def create_animation(matrices_over_time:list[np.ndarray],  title: str):
-    '''
-    Creates animation for concentration over time.
+def create_animation(matrices_over_time: list, title: str, save: bool = True, step: int = 5, as_gif: bool = True):
+    """
+    Creates animation for concentration over time and optionally saves it as GIF or MP4.
     
-    Params:
-    - matrices_over_time: list of matrices, each matrix representing 1 timestep.
-    - title: title string, for top of plot
-    '''
-    fig, ax = plt.subplots()
+    Only every `step` frames are used to speed up saving.
 
+    Params:
+    - matrices_over_time: list of 2D numpy arrays (frames)
+    - title: title for the plot
+    - save: whether to save the animation
+    - step: save every `step` frames
+    - as_gif: if True, saves as GIF, else saves as MP4
+    """
+    # Subsample frames
+    frames_to_use = matrices_over_time[::step]
+    
+    fig, ax = plt.subplots()
     ax.set_title(title)
 
     img = ax.imshow(
-        matrices_over_time[0],
+        frames_to_use[0],
         vmin=0,
         vmax=1,
         origin='lower',
-        extent=[0, 1, 0, 1]
+        extent=[0, 1, 0, 1],
+        cmap='viridis'
     )
-
     fig.colorbar(img, ax=ax)
 
     def update(frame):
-        img.set_data(matrices_over_time[frame])
+        img.set_data(frames_to_use[frame])
         return img,
 
     anim = FuncAnimation(
         fig,
         update,
-        frames=len(matrices_over_time),
-        interval=10,
+        frames=len(frames_to_use),
+        interval=50,
         blit=True
     )
 
-    # anim.save("Figures/2.3/grayscott1.gif", fps=20)
-
     plt.show()
     plt.close(fig)
+
+    if save:
+        save_dir = "Figures/2.3"
+        os.makedirs(save_dir, exist_ok=True)
+        filename = title.replace(" ", "_")
+        if as_gif:
+            save_path = os.path.join(save_dir, filename + ".gif")
+            writer = PillowWriter(fps=20)
+        else:
+            save_path = os.path.join(save_dir, filename + ".mp4")
+            from matplotlib.animation import FFMpegWriter
+            writer = FFMpegWriter(fps=20, metadata=dict(artist='Me'), bitrate=1800)
+        
+        anim.save(save_path, writer=writer)
+        print(f"Animation saved as {save_path}")
+
+def clean_filename(title: str, ext: str = ".png") -> str:
+    """
+    Turn a title into a safe filename.
+    Removes spaces, newlines, and most special characters.
+    """
+    # Remove all non-alphanumeric characters (keep _ and -)
+    safe = re.sub(r'[^A-Za-z0-9_\-]', '_', title)
+    return safe + ext
 
 def plot_last_frame(matrix:np.ndarray, title: str):
     """
@@ -268,7 +305,7 @@ def plot_last_frame(matrix:np.ndarray, title: str):
 
     plt.title(title)
 
-    filename = title.replace(" ", "_") + ".png"
+    filename = clean_filename(title, ext=".png")
     save_path = os.path.join(save_dir, filename)
 
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -298,47 +335,45 @@ def plot_l2_norm_over_time(norms, dt: float, title: str="L² Norm Over Time"):
     plt.tight_layout()
     plt.show()
 
+def run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx, shape:str, add_noise:bool=False, animation:bool=False):
+    u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k, N_t, add_noise)
+    if animation:
+        create_animation(v_matrices, f"V over time ({shape})")
+        create_animation(u_matrices, f"U over time ({shape})")
+    plot_last_frame(v_matrices[-1], title=f"Concentration of V at t={N_t} for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k} ({shape})")
+    # plot_l2_norm_over_time((unorms), dt, title=f"L² Norm of U Over Time {shape}")
+    # plot_l2_norm_over_time(vnorms, dt, title=f"L² Norm of V Over Time {shape}")
+    # total_norm = np.array(unorms) + np.array(vnorms)
+    # plot_l2_norm_over_time(total_norm, dt, title=f"Total L² Norm Over Time {shape}")
+
+
 
 # Mitosis
 Du = 0.14
 Dv = 0.06
 f  = 0.035
 k  = 0.065
-u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
-# create_animation(v_matrices, "V over time")
-# create_animation(u_matrices, "U over time")
-plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k}")
-plot_l2_norm_over_time((unorms), dt, title="L² Norm of U Over Time (Mitosis)")
-plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Mitosis)")
-total_norm = np.array(unorms) + np.array(vnorms)
-plot_l2_norm_over_time(total_norm, dt, title="Total L² Norm Over Time (Mitosis)")
+N_t = 10000
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis (noise)", add_noise=True)
 
 # Coral Pattern
 Du = 0.16
 Dv = 0.08
 f  = 0.060
 k  = 0.062
-u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
-# create_animation(v_matrices, "V over time")
-plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k}")
-plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Coral)")
-plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Coral)")
-total_norm = np.array(unorms) + np.array(vnorms)
-plot_l2_norm_over_time(total_norm, dt, title="Total L² Norm Over Time (Coral)")
+N_t=10000
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral (noise)", add_noise=True)
 
 # Spirals
+N_t=10000
 Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
-u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
-create_animation(v_matrices, "V over time")
-plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k}")
-plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Spiral)")
-plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Spiral)")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals (noise)", add_noise=True)
 
 # Zebra fish
 Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
-u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k)
-# create_animation(v_matrices, "V over time")
-plot_last_frame(v_matrices[-1], title=f"Concentration of V at t=10000 for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k}")
-plot_l2_norm_over_time(unorms, dt, title="L² Norm of U Over Time (Zebra)")
-plot_l2_norm_over_time(vnorms, dt, title="L² Norm of V Over Time (Zebra)")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra")
+run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra (noise)", add_noise=True)
 
