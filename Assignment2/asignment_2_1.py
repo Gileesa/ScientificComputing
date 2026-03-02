@@ -16,13 +16,12 @@ def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 10
     Returns: A 2D array representing the final cluster formed by the DLA process.
     """
     cluster = np.zeros((grid_size, grid_size), dtype=bool)
-    cluster[grid_size // 2, grid_size // 2] = True
+    cluster[0, grid_size // 2] = True
 
-    obj_matrix = cluster.astype(int)
+    obj_matrix = cluster.astype(int)  
 
     # concentration field
     c = np.zeros((grid_size, grid_size), dtype=float)
-
 
     # Initialize the cluster with a seed particle at the center of the grid
     for j in range(grid_size):
@@ -161,8 +160,6 @@ def growth(cluster, obj_matrix, eta, c, candidates):
             concentration = 0.0
         candidate_concentrations.append(concentration)
 
-
-
     # Convert the concentration values into weights 
     weights = []
 
@@ -296,7 +293,7 @@ def build_growth_time_grid(chosen_positions, grid_size, interval=25, tail=50):
     """
     T = np.full((grid_size, grid_size), np.nan)
 
-    center = (grid_size // 2, grid_size // 2)
+    center = (0, grid_size // 2)
     T[center] = 0  # seed
 
     for t, pos in enumerate(chosen_positions, start=1):
@@ -355,7 +352,7 @@ def eta_experiment(eta_list, omega, steps, grid_size, seed, progress_every, max_
     """
 
     for eta in eta_list:
-        cluster, obj_matrix, c, hist = diffusion_limited_aggregation(
+        cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
             steps=steps,
             grid_size=grid_size,
             eta=eta,
@@ -373,11 +370,10 @@ def eta_experiment(eta_list, omega, steps, grid_size, seed, progress_every, max_
             interpolation = "nearest",
             vmin = 0, 
             vmax = 1,
-            cmap="gray")
+            cmap="gray_r")
         
         plt.title(f"DLA cluster | eta={eta} | omega={omega}")
-
-        plt.savefig(f"Figures/2.1/dla_cluster_eta_{eta}_omega_{omega}.png", dpi=120)
+        plt.savefig(f"Assignment2/Figures/2.1/dla_cluster_eta_{eta}_omega_{omega}.png", dpi=120)
         plt.close()
 
         build_growth_time_grid(
@@ -394,40 +390,96 @@ def eta_experiment(eta_list, omega, steps, grid_size, seed, progress_every, max_
             tail=tail
         )
 
-        gif_name = f"Figures/2.1/eta/dla_growth_eta_{eta}_omega_{omega}.gif"
+        gif_name = f"Assignment2/Figures/2.1/eta/dla_growth_eta_{eta}_omega_{omega}.gif"
         ani.save(gif_name, dpi=120, writer="pillow")
 
         # save final frame png
         update(max_t)
-        fig.savefig(f"Figures/2.1/eta/dla_growth_final_eta_{eta}_omega_{omega}.png",
+        fig.savefig(f"Assignment2/Figures/2.1/eta/dla_growth_final_eta_{eta}_omega_{omega}.png",
                     dpi=150, bbox_inches="tight")
         plt.close(fig)
 
         print(f"Saved eta={eta}, omega={omega}")
 
+
+
+def omega_experiment(eta, omega_list, steps, grid_size, seed, progress_every, max_sor_iterations, interval, tail):
+    """
+    This function runs the DLA simulation for different values of omega and saves the resulting clusters and growth animations.
+    """
+    results = []
+
+    for omega in omega_list:
+        cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
+            steps=steps,
+            grid_size=grid_size,
+            eta=eta,
+            omega=omega,
+            seed=seed,
+            save_every_step=False,
+            progress_every=progress_every,
+            max_sor_iterations= max_sor_iterations
+        )
+
+        iters = hist["SOR_iterations"]
+        max_iters = max(iters)
+        avg_iters = sum(iters) / len(iters)
+
+        results.append((omega, max_iters, avg_iters))
+        print(f"Omega={omega} | Max SOR iterations: {max_iters} | Average SOR iterations: {avg_iters:.2f}")
+
+    best_omega = results[0]
+
+    for result in results:
+        if result[1] < best_omega[1]:   # compare max iterations
+            best_omega = result
+
+    print(f"Best omega value: omega={best_omega[0]} (max={best_omega[1]}, avg={best_omega[2]:.1f})")
+    return best_omega, results
+
+
 # Run the DLA for different eta values and save the results
-eta_list = [0.0, 0.5, 1.0, 2.0]
-eta_experiment(
-    eta_list=eta_list,
-    omega=1.75,
+#eta_list = [0.0, 0.5, 1.0, 2.0]
+# eta_list = [0, 1, 1.5]
+# eta_experiment(
+#     eta_list=eta_list,
+#     omega=1.75,
+#     steps=1000,
+#     grid_size=100,
+#     seed=0,
+#     progress_every=50,
+#     max_sor_iterations=1000,
+#     interval=50,
+#     tail=50
+# )
+
+
+# Run the DLA for different omega values and save the results
+omega_list = [1.75, 1.8, 1.85, 1.9, 1.95]
+
+best_omega, results = omega_experiment(
+    eta=1.0,
+    omega_list=omega_list,
     steps=1000,
     grid_size=100,
-    seed=0,
+    seed=0, 
     progress_every=50,
     max_sor_iterations=1000,
     interval=50,
     tail=50
 )
 
+omegas = [r[0] for r in results]
+max_iters = [r[1] for r in results]
+avg_iters = [r[2] for r in results]
 
-# cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
-#     steps=1000, 
-#     grid_size=100, 
-#     eta=1.0, 
-#     omega=1.75, 
-#     seed=0,
-#     save_every_step=False,
-#     progress_every=50
-# )
-# simulation = build_growth_time_grid(hist["chosen_positions"], grid_size=100, interval=25, tail=50)
+plt.figure()
+plt.plot(omegas, avg_iters, marker="o", label="Average iterations")
+plt.plot(omegas, max_iters, marker="o", label="Max iterations")
+plt.xlabel("omega")
+plt.ylabel("SOR iterations")
+plt.title("SOR iterations vs omega")
+plt.legend()
+plt.savefig(f"Assignment2/Figures/2.1/omega/best_omega_{best_omega[0]}.png", dpi=120)
+plt.show()
 
