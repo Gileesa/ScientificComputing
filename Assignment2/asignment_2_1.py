@@ -94,7 +94,7 @@ def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), botto
         c[: , 0] = c[:, 1]
         c[: , -1] = c[:, -2]
         c[obj_matrix == 1] = 0
-
+        c = np.clip(c, 0, 1)
 
         delta = np.max(np.abs(c - c_old)) 
         delta_list.append(delta)
@@ -266,6 +266,8 @@ def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top
         history["growth_probabilities"].append(probs)
 
         c = c_solved
+
+        print(f"Growth step {step+1}/{steps} | cluster size = {cluster.sum()} | SOR iterations = {iteration_used}")
 
 
     return cluster, obj_matrix, c, history
