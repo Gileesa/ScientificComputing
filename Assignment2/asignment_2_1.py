@@ -438,48 +438,47 @@ def omega_experiment(eta, omega_list, steps, grid_size, seed, progress_every, ma
     return best_omega, results
 
 
-# Run the DLA for different eta values and save the results
-#eta_list = [0.0, 0.5, 1.0, 2.0]
-# eta_list = [0, 1, 1.5]
-# eta_experiment(
-#     eta_list=eta_list,
-#     omega=1.75,
-#     steps=1000,
-#     grid_size=100,
-#     seed=0,
-#     progress_every=50,
-#     max_sor_iterations=1000,
-#     interval=50,
-#     tail=50
-# )
-
-
-# Run the DLA for different omega values and save the results
-omega_list = [1.75, 1.8, 1.85, 1.9, 1.95]
-
-best_omega, results = omega_experiment(
-    eta=1.0,
-    omega_list=omega_list,
+#Run the DLA for different eta values and save the results
+eta_list = [0.0, 0.5, 1.0, 1.5, 2.0]
+eta_experiment(
+    eta_list=eta_list,
+    omega=1.9,
     steps=1000,
     grid_size=100,
-    seed=0, 
+    seed=0,
     progress_every=50,
     max_sor_iterations=1000,
     interval=50,
     tail=50
 )
 
-omegas = [r[0] for r in results]
-max_iters = [r[1] for r in results]
-avg_iters = [r[2] for r in results]
 
-plt.figure()
-plt.plot(omegas, avg_iters, marker="o", label="Average iterations")
-plt.plot(omegas, max_iters, marker="o", label="Max iterations")
-plt.xlabel("omega")
-plt.ylabel("SOR iterations")
-plt.title("SOR iterations vs omega")
-plt.legend()
-plt.savefig(f"Assignment2/Figures/2.1/omega/best_omega_{best_omega[0]}.png", dpi=120)
-plt.show()
+# Run the DLA for different omega values and save the results
+# omega_list = [1.75, 1.8, 1.85, 1.9, 1.95, 2]
+
+# best_omega, results = omega_experiment(
+#     eta=1.0,
+#     omega_list=omega_list,
+#     steps=1000,
+#     grid_size=100,
+#     seed=0, 
+#     progress_every=50,
+#     max_sor_iterations=1000,
+#     interval=50,
+#     tail=50
+# )
+
+# omegas = [r[0] for r in results]
+# max_iters = [r[1] for r in results]
+# avg_iters = [r[2] for r in results]
+
+# plt.figure()
+# plt.plot(omegas, avg_iters, marker="o", label="Average iterations")
+# plt.plot(omegas, max_iters, marker="o", label="Max iterations")
+# plt.xlabel("omega")
+# plt.ylabel("SOR iterations")
+# plt.title("SOR iterations vs omega")
+# plt.legend()
+# plt.savefig(f"Assignment2/Figures/2.1/omega/best_omega_{best_omega[0]}.png", dpi=120)
+# plt.show()
 
