@@ -456,6 +456,8 @@ def run_single_experiment(eta, omega, steps, grid_size, seed, progress_every, ma
         max_sor_iterations= max_sor_iterations
     )
 
+    result = []
+
     os.makedirs(f"Assignment2/Figures/2.1/grid/eta_{eta}_omega_{omega}", exist_ok=True)
     os.makedirs(f"Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}", exist_ok=True)
 
@@ -493,10 +495,16 @@ def run_single_experiment(eta, omega, steps, grid_size, seed, progress_every, ma
     plt.close(fig)
 
     iterations = hist["SOR_iterations"]
-    max_iterations = max(iterations)
-    average_iterations = sum(iterations) / len(iterations)
 
-    return (eta, omega, max_iterations, average_iterations)    
+    for step, value in enumerate(iterations):
+        result.append({
+            "eta": eta,
+            "omega": omega,
+            "step": step,
+            "sor_iterations": value
+        })    
+
+    return result  
 
 
 def parallel_experiment(eta_list, omega_list, steps, grid_size, seed, progress_every, max_sor_iterations, interval, tail, workers):
@@ -530,8 +538,7 @@ def parallel_experiment(eta_list, omega_list, steps, grid_size, seed, progress_e
 
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
-            results.append(result)
-            print(f"Completed experiment: eta={result[0]}, omega={result[1]}, max_iters={result[2]}, avg_iters={result[3]:.2f}")
+            results.extend(result)
     return results
 
 
