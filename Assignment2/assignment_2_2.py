@@ -93,9 +93,10 @@ for ps in ps_list:
     cluster_init = np.zeros((Nx,Ny), dtype=bool)
     mid = int(Nx / 2)
     cluster_init[0, mid] = 1
-    cluster, cluster_over_time, num_cluster = mc_DLA(cluster_init, 50000, ps, False)
+    cluster, cluster_over_time, num_cluster = mc_DLA(cluster_init, 15000, ps, False)
     plt.imshow(cluster, origin='lower', cmap='binary')
     plt.savefig(f"Figures/2.2/run_ps={ps}.png")
+    plt.close()
     print(f'ps run {ps} is domne')
     #plt.show()
     total_cluster.append(num_cluster[-1])
@@ -108,6 +109,8 @@ mult_cluster = []
 mult_cluster_temp = []
 total_cluster = []
 all_counts = []
+total_stds = []
+mult_cluster_std = []
 for ps in ps_list:
     for i in range(10):
         cluster_init = np.zeros((Nx,Ny), dtype=bool)
@@ -118,12 +121,25 @@ for ps in ps_list:
         print(f'at ps: {ps}, in run {i}')
     mult_cluster_temp = np.array(all_counts)
     avg = np.mean(mult_cluster_temp, axis=0)
+    std = np.std(mult_cluster_temp, axis=0)
     mult_cluster.append(avg.copy())
+    mult_cluster_std.append(std.copy())
     total_cluster.append(avg[-1])
-    mult_cluster_temp, all_counts, avg = [], [], []
+    total_stds.append(std[-1])
+    mult_cluster_temp, all_counts, avg, std = [], [], [], []
         
 for c in range(len(mult_cluster)):
+    mean = mult_cluster[c]
+    std = mult_cluster_std[c]
     plt.plot(mult_cluster[c], color=cmap(c), label=f'ps = {ps_list[c]}')
+    plt.fill_between(
+        range(len(mean)),
+        mean - std,
+        mean + std,
+        color=cmap(c),
+        alpha=0.2
+    )
+
 plt.ylabel('size of cluster')
 plt.xlabel('walker count')
 plt.legend()
@@ -131,6 +147,7 @@ plt.savefig(f"Figures/2.2/ps_list_runs.png")
 plt.show()
 
 plt.plot(ps_list, total_cluster)
+plt.errorbar(ps_list, total_cluster, yerr=total_stds, fmt='o-', capsize=5)
 plt.ylabel('size of cluster')
 plt.xlabel('ps')
 plt.savefig(f"Figures/2.2/ps_vs_total_cluster.png")
