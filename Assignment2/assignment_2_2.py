@@ -4,11 +4,10 @@ import random
 from matplotlib.animation import FuncAnimation
 
 random.seed(42)
-
+Nx = 100
+Ny = 100
 def run_2_2():
-    Nx = 100
-    Ny = 100
-
+    global Nx, Ny
 
     def walker(cluster, x, y, cluster_over_time, ps, save_frame, num_cluster):
         global Nx, Ny
