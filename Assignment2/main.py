@@ -6,7 +6,7 @@ from pandas import DataFrame as df
 import numpy as np
 
 if __name__ == "__main__":
-    eta_list = [0, 0.5, 1.0, 1.5,2.0]
+    eta_list = [0, 0.5, 1.0, 1.5, 2.0]
     omega_list = [1.75, 1.8, 1.85, 1.9, 1.95]
 
     results = parallel_experiment(
