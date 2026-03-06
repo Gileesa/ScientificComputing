@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.animation import FuncAnimation
+from numba import njit, prange
+import time
 
 def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
     """
@@ -41,6 +43,53 @@ def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 10
 
     return c, cluster, obj_matrix
 
+@njit(parallel=True)
+def sor_parallel(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), bottom = 0, top = 1):
+    Ny, Nx = c.shape
+
+    one_min_omega = 1.0 - omega
+
+    for iteration in range(max_iteration):
+        c_old = c.copy()
+
+        # update the values for in the interior of the matrix, excluding the boundaries
+        #grid update for red sites
+        for j in prange(1, Ny-1):
+            local_max = 0.0
+            start = 1 + (j % 2)
+            for i in range(start, Nx-1, 2):
+                if obj_matrix[j, i] == 0:
+                    old = c[j,i]
+                    neighbour = 0.25 * (c[j - 1, i] + c[j + 1, i] + c[j, i - 1] + c[j, i + 1])
+                    c[j, i] = one_min_omega * c[j, i] + omega * neighbour
+                elif obj_matrix[j, i] == 1:
+                    c[j, i] = 0
+
+        #grid update for black sites
+        for j in prange(1, Ny-1):
+            local_max = 0.0
+            start = 2 - (j % 2)
+            for i in range(start, Nx-1, 2):
+                if obj_matrix[j, i] == 0:
+                    old = c[j,i]
+                    neighbour = 0.25 * (c[j - 1, i] + c[j + 1, i] + c[j, i - 1] + c[j, i + 1])
+                    c[j, i] = one_min_omega * c[j, i] + omega * neighbour
+                elif obj_matrix[j, i] == 1:
+                    c[j, i] = 0
+  
+        c[0, : ] = bottom
+        c[-1, : ] = top
+        c[: , 0] = c[:, 1]
+        c[: , -1] = c[:, -2]
+        c = np.clip(c, 0, 1)
+
+        delta = np.max(np.abs(c - c_old))
+        
+        if delta < epsilon:
+            return c, (iteration + 1)
+
+    print("WARNING: reached max_iteration without convergence.")
+    return c, (iteration + 1)
 
 def sor_iteration(c, omega, max_iteration, obj_matrix, epsilon = 10**(-5), bottom = 0, top = 1, save_snap = False, verbose = False):
     """
@@ -189,7 +238,7 @@ def growth(cluster, obj_matrix, eta, c, candidates):
 
     return chosen_position, probabilities, candidate_list, candidate_concentrations, obj_matrix
 
-def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top = 1, omega = 1.75, eta = 1.0, max_sor_iterations = 1000, save_snap = False, seed = None, save_every_step=True, progress_every=50):
+def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top = 1, omega = 1.75, eta = 1.0, max_sor_iterations = 1000, save_snap = False, seed = None, save_every_step=True, progress_every=50, benchmark_test = False):
     """
     This fumction simulates a Laplace growth DLA for a given number of growth steps.
     At each step, 
@@ -233,17 +282,29 @@ def diffusion_limited_aggregation(steps = 1000, grid_size = 100, bottom = 0, top
 
     # Simulate the growth process for the specified number of steps
     for step in range(steps):
-        # Solve the Laplace equation using SOR to get the concentration field
-        c_solved, deltas, iteration_used, c_over_time = sor_iteration(
-            c, 
-            omega=omega,
-            max_iteration=max_sor_iterations,
-            obj_matrix=obj_matrix,
-            epsilon=10**(-5),
-            bottom=bottom,
-            top=top,
-            save_snap=False
-        )
+        #testing parallel vs. non_parallel sor
+        if benchmark_test:
+            c_solved, iteration_used = sor_parallel(
+                c, 
+                omega=omega,
+                max_iteration=max_sor_iterations,
+                obj_matrix=obj_matrix,
+                epsilon=10**(-5),
+                bottom=bottom,
+                top=top
+            )
+        else: 
+            # Solve the Laplace equation using SOR to get the concentration field
+            c_solved, deltas, iteration_used, c_over_time = sor_iteration(
+                c, 
+                omega=omega,
+                max_iteration=max_sor_iterations,
+                obj_matrix=obj_matrix,
+                epsilon=10**(-5),
+                bottom=bottom,
+                top=top,
+                save_snap=False
+            )
 
         c_solved = np.clip(c_solved, 0, 1)
 
@@ -437,6 +498,55 @@ def omega_experiment(eta, omega_list, steps, grid_size, seed, progress_every, ma
     print(f"Best omega value: omega={best_omega[0]} (max={best_omega[1]}, avg={best_omega[2]:.1f})")
     return best_omega, results
 
+def test_benchmark():
+    #for accurate results sor_parallel needs an initial run
+    print('starting initial warm up run')
+    c, cluster, obj_matrix = initialize_dla_laplace(grid_size=100, bottom=0, top=1)
+    c_solved, iteration_used = sor_parallel(
+        c, 
+        omega=1.9,
+        max_iteration=1000,
+        obj_matrix=obj_matrix,
+        epsilon=10**(-5),
+        bottom=0,
+        top=1
+    )
+    print('done with the warm up run')
+    grid_sizes = [50, 100, 200, 400, 600, 800, 1000]
+    non_parallel_time = []
+    parallel_time = []
+    for grid in grid_sizes:
+        print(f'non-parallel grid size {grid}')
+        start = time.perf_counter()
+        cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
+            steps=500,
+            grid_size=grid,
+            eta=1.0,
+            omega=1.9,
+            seed=0,
+            save_every_step=False,
+            progress_every=50,
+            max_sor_iterations=1000
+        )
+        end = time.perf_counter()
+        non_parallel_time.append(end - start)
+
+        print(f'parallel grid size {grid}')
+        start = time.perf_counter()
+        cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
+            steps=500,
+            grid_size=grid,
+            eta=1.0,
+            omega=1.9,
+            seed=0,
+            save_every_step=False,
+            progress_every=50,
+            max_sor_iterations=1000, 
+            benchmark_test=True
+        )
+        end = time.perf_counter()
+        parallel_time.append(end - start)
+    return non_parallel_time, parallel_time, grid_sizes
 
 #Run the DLA for different eta values and save the results
 eta_list = [0.0, 0.5, 1.0, 1.5, 2.0]
@@ -452,6 +562,21 @@ eta_experiment(
     tail=50
 )
 
+non_parallel_time, parallel_time, grid_sizes = test_benchmark()
+plt.plot(grid_sizes, non_parallel_time, color='red', label='normal SOR run')
+plt.plot(grid_sizes, parallel_time, color='blue', label='parallelized SOR run')
+plt.xlabel('grid size')
+plt.ylabel('time (s)')
+plt.legend()
+plt.savefig('Figures/2.1/benchmark_test.png')
+plt.show()
+
+df = pd.DataFrame({
+        "Grid sizes": grid_sizes,
+        "Normal SOR run time means": non_parallel_time,
+        "Parallel SOR run time means": parallel_time
+    })
+df.to_csv("Figures/2.1/benchmark_test.csv", index=False)
 
 # Run the DLA for different omega values and save the results
 # omega_list = [1.75, 1.8, 1.85, 1.9, 1.95, 2]

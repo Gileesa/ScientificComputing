@@ -97,7 +97,7 @@ for ps in ps_list:
     plt.imshow(cluster, origin='lower', cmap='binary')
     plt.savefig(f"Figures/2.2/run_ps={ps}.png")
     plt.close()
-    print(f'ps run {ps} is domne')
+    print(f'ps run {ps} is done')
     #plt.show()
     total_cluster.append(num_cluster[-1])
     mult_cluster.append(num_cluster.copy())
