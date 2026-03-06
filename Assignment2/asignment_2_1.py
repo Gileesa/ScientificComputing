@@ -4,6 +4,8 @@ import pandas as pd
 from matplotlib.animation import FuncAnimation
 from numba import njit, prange
 import time
+import os
+import concurrent.futures
 
 def initialize_dla_laplace(grid_size = 100, bottom = 0, top = 1, time_steps = 1000):
     """
@@ -548,19 +550,123 @@ def test_benchmark():
         parallel_time.append(end - start)
     return non_parallel_time, parallel_time, grid_sizes
 
-#Run the DLA for different eta values and save the results
-eta_list = [0.0, 0.5, 1.0, 1.5, 2.0]
-eta_experiment(
-    eta_list=eta_list,
-    omega=1.9,
-    steps=1000,
-    grid_size=100,
-    seed=0,
-    progress_every=50,
-    max_sor_iterations=1000,
-    interval=50,
-    tail=50
-)
+def run_single_experiment(eta, omega, steps, grid_size, seed, progress_every, max_sor_iterations, interval, tail):
+    """
+    This function runs a single DLA simulation for the given parameters and saves the resulting cluster and growth animation.
+    """
+
+    cluster, obj_matrix, c, hist, frames = diffusion_limited_aggregation(
+        steps=steps,
+        grid_size=grid_size,
+        eta=eta,
+        omega=omega,
+        seed=seed,
+        save_every_step=False,
+        progress_every=progress_every,
+        max_sor_iterations= max_sor_iterations
+    )
+
+    result = []
+
+    os.makedirs(f"Assignment2/Figures/2.1/grid/eta_{eta}_omega_{omega}", exist_ok=True)
+    os.makedirs(f"Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}", exist_ok=True)
+
+    plt.figure(figsize=(6, 6))
+    plt.imshow(
+        cluster.astype(int), 
+        origin="lower", 
+        interpolation = "nearest",
+        vmin = 0, 
+        vmax = 1,
+        cmap="gray_r")
+    
+    plt.title(f"DLA cluster | eta={eta} | omega={omega}")
+    plt.savefig(f"Assignment2/Figures/2.1/grid/eta_{eta}_omega_{omega}/dla_cluster.png", dpi=120)
+    plt.savefig(f"Assignment2/Figures/2.1/grid/eta_{eta}_omega_{omega}/dla_cluster.pdf", dpi=120)
+    plt.close()
+
+
+    ani, fig, update, max_t = build_growth_time_grid(
+        hist["chosen_positions"],
+        grid_size=grid_size,
+        interval=interval,
+        tail=tail
+    )
+
+    ani.save(f"Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth.gif", dpi=120, writer="pillow")
+
+    update(max_t)
+    fig.savefig(f"Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth_final.png",
+                dpi=150, bbox_inches="tight")
+    
+    fig.savefig(f"Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth_final.pdf",
+                dpi=150, bbox_inches="tight")
+    
+    plt.close(fig)
+
+    iterations = hist["SOR_iterations"]
+
+    for step, value in enumerate(iterations):
+        result.append({
+            "eta": eta,
+            "omega": omega,
+            "step": step,
+            "sor_iterations": value
+        })    
+
+    return result  
+
+
+def parallel_experiment(eta_list, omega_list, steps, grid_size, seed, progress_every, max_sor_iterations, interval, tail, workers):
+    """
+    This function runs the DLA simulations for all combinations of eta and omega in parallel using multiprocessing.
+    """
+
+    combinations = []
+
+    for eta in eta_list:
+        for omega in omega_list:
+            combinations.append((eta, omega))
+
+    results = []
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = []
+        for eta, omega in combinations:
+            futures.append(executor.submit(
+                run_single_experiment, 
+                eta, 
+                omega, 
+                steps, 
+                grid_size, 
+                seed, 
+                progress_every, 
+                max_sor_iterations, 
+                interval, 
+                tail
+            ))
+
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            results.extend(result)
+    return results
+
+
+
+
+# #Run the DLA for different eta values and save the results
+# eta_list = [0.0, 0.5, 1.0, 1.5, 2.0]
+# eta_experiment(
+#     eta_list=eta_list,
+#     omega=1.9,
+#     steps=1000,
+#     grid_size=100,
+#     seed=0,
+#     progress_every=50,
+#     max_sor_iterations=1000,
+#     interval=50,
+#     tail=50
+# )
 
 non_parallel_time, parallel_time, grid_sizes = test_benchmark()
 plt.plot(grid_sizes, non_parallel_time, color='red', label='normal SOR run')
@@ -578,7 +684,7 @@ df = pd.DataFrame({
     })
 df.to_csv("Figures/2.1/benchmark_test.csv", index=False)
 
-# Run the DLA for different omega values and save the results
+# # Run the DLA for different omega values and save the results
 # omega_list = [1.75, 1.8, 1.85, 1.9, 1.95, 2]
 
 # best_omega, results = omega_experiment(
