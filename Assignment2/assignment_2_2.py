@@ -94,7 +94,7 @@ def run_2_2():
         cluster_init = np.zeros((Nx,Ny), dtype=bool)
         mid = int(Nx / 2)
         cluster_init[0, mid] = 1
-        cluster, cluster_over_time, num_cluster = mc_DLA(cluster_init, 15000, ps, False)
+        cluster, cluster_over_time, num_cluster = mc_DLA(cluster_init, 50000, ps, False)
         plt.imshow(cluster, origin='lower', cmap='binary')
         plt.savefig(f"Figures/2.2/run_ps={ps}.png")
         plt.close()
