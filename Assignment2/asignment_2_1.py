@@ -668,22 +668,6 @@ def parallel_experiment(eta_list, omega_list, steps, grid_size, seed, progress_e
 #     tail=50
 # )
 
-non_parallel_time, parallel_time, grid_sizes = test_benchmark()
-plt.plot(grid_sizes, non_parallel_time, color='red', label='normal SOR run')
-plt.plot(grid_sizes, parallel_time, color='blue', label='parallelized SOR run')
-plt.xlabel('grid size')
-plt.ylabel('time (s)')
-plt.legend()
-plt.savefig('Figures/2.1/benchmark_test.png')
-plt.show()
-
-df = pd.DataFrame({
-        "Grid sizes": grid_sizes,
-        "Normal SOR run time means": non_parallel_time,
-        "Parallel SOR run time means": parallel_time
-    })
-df.to_csv("Figures/2.1/benchmark_test.csv", index=False)
-
 # # Run the DLA for different omega values and save the results
 # omega_list = [1.75, 1.8, 1.85, 1.9, 1.95, 2]
 
