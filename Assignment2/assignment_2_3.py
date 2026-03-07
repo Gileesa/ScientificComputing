@@ -24,7 +24,6 @@ c_v_init = 0.25
 Dv = 0.08
 Du = 0.16
 
-
 def update_diffusion_term(matrix:np.ndarray):
     ''' 
     Function that takes a concentration matrix and 
@@ -213,65 +212,47 @@ def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float
 
     return u_matrices, v_matrices, unorms, vnorms
 
-
-def create_animation(matrices_over_time: list, title: str, save: bool = True, step: int = 5, as_gif: bool = True):
+def create_animation(matrices_over_time, title):
     """
-    Creates animation for concentration over time and optionally saves it as GIF or MP4.
     
-    Only every `step` frames are used to speed up saving.
-
-    Params:
-    - matrices_over_time: list of 2D numpy arrays (frames)
-    - title: title for the plot
-    - save: whether to save the animation
-    - step: save every `step` frames
-    - as_gif: if True, saves as GIF, else saves as MP4
     """
 
-    frames_to_use = matrices_over_time[::step]
-    
+    matrices_over_time = np.array(matrices_over_time)
+    time_steps = matrices_over_time.shape[0]
+
     fig, ax = plt.subplots()
-    ax.set_title(title)
 
-    img = ax.imshow(
-        frames_to_use[0],
+    im = ax.imshow(
+        matrices_over_time[0],
+        origin="lower",
+        cmap="viridis",
         vmin=0,
-        vmax=1,
-        origin='lower',
-        extent=[0, 1, 0, 1],
-        cmap='viridis'
+        vmax=1
     )
-    fig.colorbar(img, ax=ax)
 
-    def update(frame):
-        img.set_data(frames_to_use[frame])
-        return img,
+    ax.set_title(title)
+    plt.colorbar(im, ax=ax)
 
-    anim = FuncAnimation(
+    def update(t):
+        im.set_data(matrices_over_time[t])
+        return (im,)
+
+    ani = FuncAnimation(
         fig,
         update,
-        frames=len(frames_to_use),
-        interval=50,
+        frames=time_steps,
+        interval=100,
         blit=True
     )
 
-    plt.show()
-    plt.close(fig)
+    save_dir = "Figures/2.3"
+    os.makedirs(save_dir, exist_ok=True) 
 
-    if save:
-        save_dir = "Figures/2.3"
-        os.makedirs(save_dir, exist_ok=True)
-        filename = title.replace(" ", "_")
-        if as_gif:
-            save_path = os.path.join(save_dir, filename + ".gif")
-            writer = PillowWriter(fps=20)
-        else:
-            save_path = os.path.join(save_dir, filename + ".mp4")
-            from matplotlib.animation import FFMpegWriter
-            writer = FFMpegWriter(fps=20, metadata=dict(artist='Me'), bitrate=1800)
-        
-        anim.save(save_path, writer=writer)
-        print(f"Animation saved as {save_path}")
+    filename = clean_filename(title, ext=".gif")
+    save_path = os.path.join(save_dir, filename)
+
+    ani.save(save_path, fps=10, dpi=200)
+    plt.show()
 
 def clean_filename(title: str, ext: str = ".png"):
     """
@@ -328,45 +309,61 @@ def plot_l2_norm_over_time(norms, dt: float, title: str="L² Norm Over Time"):
     plt.tight_layout()
     plt.show()
 
-def run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx, shape:str, add_noise:bool=False, animation:bool=False):
+def run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx, shape:str, add_noise:bool=False, animation:bool=True):
     u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k, N_t, add_noise)
     if animation:
         create_animation(v_matrices, f"V over time ({shape})")
         create_animation(u_matrices, f"U over time ({shape})")
     plot_last_frame(v_matrices[-1], title=f"Concentration of V at t={N_t} for ICs \n Du={Du}, Dv={Dv}, f={f}, k={k} ({shape})")
-    # plot_l2_norm_over_time((unorms), dt, title=f"L² Norm of U Over Time {shape}")
-    # plot_l2_norm_over_time(vnorms, dt, title=f"L² Norm of V Over Time {shape}")
-    # total_norm = np.array(unorms) + np.array(vnorms)
-    # plot_l2_norm_over_time(total_norm, dt, title=f"Total L² Norm Over Time {shape}")
 
 
 
-# Mitosis
-Du = 0.14
-Dv = 0.06
-f  = 0.035
-k  = 0.065
-N_t = 10000
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis")
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis (noise)", add_noise=True)
 
-# Coral Pattern
-Du = 0.16
-Dv = 0.08
-f  = 0.060
-k  = 0.062
-N_t = 10000
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral")
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral (noise)", add_noise=True)
+def run_2_3():
+    N = 200 # number of x and y steps
 
-# Spirals
-N_t = 10000
-Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals")
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals (noise)", add_noise=True)
+    dx = 1 # x-step of simulation
+    dy = dx # y-step of simulation
+    t_max = 10000 # max time of simulation
 
-# Zebra fish
-Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra")
-run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra (noise)", add_noise=True)
+    dt = 1 # time step of simulation, set to be stable (D*dt/dx^2 <= 0.25)
+    N_t = int(t_max/dt) # number of time steps
 
+    f = 0.035
+    k = 0.060
+    r = 10
+    c_v_init = 0.25
+    Dv = 0.08
+    Du = 0.16
+
+
+    # Mitosis
+    Du = 0.14
+    Dv = 0.06
+    f  = 0.035
+    k  = 0.065
+    N_t = 10000
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis")
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Mitosis (noise)", add_noise=True)
+
+    # Coral Pattern
+    Du = 0.16
+    Dv = 0.08
+    f  = 0.060
+    k  = 0.062
+    N_t = 10000
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral")
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral (noise)", add_noise=True)
+
+    # Spirals
+    N_t = 10000
+    Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals")
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals (noise)", add_noise=True)
+
+    # Zebra fish
+    Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra")
+    run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra (noise)", add_noise=True)
+
+run_2_3()
