@@ -87,11 +87,6 @@ def update_v_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float
         - dt * decay_term
     )
 
-    # TODO: SOR version
-    # step 1: update 'red' cells
-    # step 2: update 'black' cells
-    # step 3: combine into next_matrix
-
     # implement reflecting boundary conditions
     # here, vmatrix(-1,j) = vmatrix(1,j) etc.
     next_matrix[0, :]  = next_matrix[1, :]
@@ -207,7 +202,6 @@ def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float
     unorms = []
     vnorms = []
 
-    # TODO: we might want to apply Strang splitting (operator splitting)
     for _ in range(N_t):
         umatrix, unorm = update_u_one_step(umatrix, vmatrix, f,Du,dt,dx)
         u_matrices.append(umatrix)
@@ -233,7 +227,7 @@ def create_animation(matrices_over_time: list, title: str, save: bool = True, st
     - step: save every `step` frames
     - as_gif: if True, saves as GIF, else saves as MP4
     """
-    # Subsample frames
+
     frames_to_use = matrices_over_time[::step]
     
     fig, ax = plt.subplots()
@@ -279,12 +273,11 @@ def create_animation(matrices_over_time: list, title: str, save: bool = True, st
         anim.save(save_path, writer=writer)
         print(f"Animation saved as {save_path}")
 
-def clean_filename(title: str, ext: str = ".png") -> str:
+def clean_filename(title: str, ext: str = ".png"):
     """
     Turn a title into a safe filename.
-    Removes spaces, newlines, and most special characters.
+    Removes most special characters.
     """
-    # Remove all non-alphanumeric characters (keep _ and -)
     safe = re.sub(r'[^A-Za-z0-9_\-]', '_', title)
     return safe + ext
 
@@ -362,12 +355,12 @@ Du = 0.16
 Dv = 0.08
 f  = 0.060
 k  = 0.062
-N_t=10000
+N_t = 10000
 run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral")
 run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Coral (noise)", add_noise=True)
 
 # Spirals
-N_t=10000
+N_t = 10000
 Du, Dv, f, k = 0.12, 0.08, 0.020, 0.050
 run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals")
 run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Spirals (noise)", add_noise=True)
