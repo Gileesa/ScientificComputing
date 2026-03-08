@@ -21,7 +21,7 @@ The code generates:
         - e.g "Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth_final.png"
         - e.g "Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth_final.pdf"
 
-    – animation of cluster growth
+    - animation of cluster growth
         - e.g Assignment2/Figures/2.1/gif/eta_{eta}_omega_{omega}/dla_growth.gif
 
 - for each combination the final frame of the growth animation is stored in:
