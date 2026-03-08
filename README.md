@@ -57,5 +57,3 @@ The code generates:
     - Mitosis: Concentration_of_V_at_t_10000_for_ICs___Du_0_14__Dv_0_06__f_0_035__k_0_065__Mitosis__noise__.png
     - Coral: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_06__k_0_062__Coral__noise__.png
     - Zebra-Fish: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_035__k_0_06__Zebra__noise__.png
-- Gifs of all the above (similar file name except .gif instead of .png)
-- Gifs of all the above for chemical U
