@@ -23,3 +23,17 @@ The code generates:
 - ps_list_runs.png: size of cluster plotted against walker count with each line representing a different p_s value
 - ps_vs_total_cluster.png: p_s vs. cluster size plot
 - run_ps=(psvalue).png: multiple plots with this naming scheme where different p_s values and the resulting clusters are visualized
+
+### Figures in directory 2.3
+The code generates:
+- Multiple PNGs for the simulation WITHOUT noise:
+    - Spirals: Concentration_of_V_at_t_10000_for_ICs___Du_0_12__Dv_0_08__f_0_02__k_0_05__Spirals_.png
+    - Mitosis: Concentration_of_V_at_t_10000_for_ICs___Du_0_14__Dv_0_06__f_0_035__k_0_065__Mitosis_.png
+    - Coral: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_06__k_0_062__Coral_.png
+    - Zebra-Fish: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_035__k_0_06__Zebra_.png
+- Multiple PNGs for the simulation WITH noise:
+    - Spirals: Concentration_of_V_at_t_10000_for_ICs___Du_0_12__Dv_0_08__f_0_02__k_0_05__Spirals__noise__.png
+    - Mitosis: Concentration_of_V_at_t_10000_for_ICs___Du_0_14__Dv_0_06__f_0_035__k_0_065__Mitosis__noise__.png
+    - Coral: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_06__k_0_062__Coral__noise__.png
+    - Zebra-Fish: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_035__k_0_06__Zebra__noise__.png
+- Gifs of all the above (similar file name except .gif instead of .png)
