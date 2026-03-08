@@ -2,7 +2,7 @@
 For the course Scientific Computing (Msc CLS)
 
 ## Assignment 2
-The code for assignment 2 can be ran by going into the Assignment2 directory using the command cd
+The code for assignment 2 can be ran by going into the Assignment2 directory using the command 'cd'.
 You need to initially run this code for the appropriate libraries:
 ```
 pip install -r requirements.txt
