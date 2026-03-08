@@ -28,9 +28,8 @@ The code generates:
     - e.g Assignment2/Figures/2.1/grid/eta_{eta}_omega_{omega}/dla_cluster.png
 
 
-- experiment results are stored in Assignment2/Figures/2.1/summary, whcih contains
+- experiment results are stored in Assignment2/Figures/2.1/summary, which contains
     - dla_results.csv – raw data containing the number of SOR iterations per growth step
-
     - dla_summary_stats.csv – statistical summary of SOR iterations
     - boxplot_by_eta.png – distribution of SOR iterations for different $\omega$ and $\eta$
     - mean_vs_omega_by_eta.png – mean SOR iterations vs $\omega$
