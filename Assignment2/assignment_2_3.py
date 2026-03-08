@@ -335,5 +335,3 @@ def run_2_3():
     Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
     run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra")
     run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra (noise)", add_noise=True)
-
-run_2_3()
