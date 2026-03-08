@@ -39,16 +39,6 @@ def update_diffusion_term(matrix:np.ndarray):
     )
     return diffusion_term
 
-def l2_norm_u(diff_term:float, reaction_term:float, replenish_term:float, matrix:np.ndarray, Du:float, dx:float):
-    time_derivative = (Du/dx**2) * diff_term - reaction_term + replenish_term
-    dy = dx
-    return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
-
-def l2_norm_v(diff_term:float, reaction_term:float, decay_term:float, matrix:np.ndarray, Dv:float, dx:float):
-    time_derivative = (Dv/dx**2) * diff_term + reaction_term - decay_term
-    dy = dx
-    return np.sum(matrix[1:-1,1:-1] * (time_derivative)) * dy * dx #Riemann summ
-
 def update_v_one_step(umatrix: np.ndarray, vmatrix: np.ndarray, f:float, D:float, dt:float, dx:float, k:float):
     ''' 
     Function that updates concentration matrix for substance V for 1 time step.
@@ -214,7 +204,7 @@ def run_gray_scott(N: int, r: int, c_v_init: float, f: float,Dv: float,Du: float
 
 def create_animation(matrices_over_time, title):
     """
-    
+    Creates gif heatmap animation of list of matrices
     """
 
     matrices_over_time = np.array(matrices_over_time)
@@ -289,26 +279,6 @@ def plot_last_frame(matrix:np.ndarray, title: str):
     print(f"Saved heatmap to {save_path}")
 
 
-def plot_l2_norm_over_time(norms, dt: float, title: str="L² Norm Over Time"):
-    """
-    Plots the L² norm of a system over time.
-
-    Params:
-    - norms [list or np.ndarray]: L² norm values at each timestep
-    - dt [float]: time step size
-    - title [str]: plot title
-    """
-    times = [i * dt for i in range(len(norms))]
-
-    plt.figure(figsize=(6,4))
-    plt.plot(times, norms, color='blue', lw=2)
-    plt.xlabel("Time")
-    plt.ylabel("L² Norm")
-    plt.title(title)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
 def run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx, shape:str, add_noise:bool=False, animation:bool=True):
     u_matrices, v_matrices, unorms, vnorms = run_gray_scott(N,r,c_v_init,f,Dv,Du,dt,dx,k, N_t, add_noise)
     if animation:
@@ -365,5 +335,3 @@ def run_2_3():
     Du, Dv, f, k = 0.16, 0.08, 0.035, 0.060
     run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra")
     run_full(Du, Dv, f, k, N_t, c_v_init, r, dt,dx,shape="Zebra (noise)", add_noise=True)
-
-run_2_3()
