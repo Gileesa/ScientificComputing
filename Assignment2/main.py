@@ -6,6 +6,7 @@ from pandas import DataFrame as df
 import numpy as np
 from assignment_2_2 import run_2_2
 from assignment_2_3 import run_2_3
+from plot import plot_dla_results
 
 if __name__ == "__main__":
     eta_list = [0, 0.5, 1.0, 1.5, 2.0]
@@ -47,6 +48,10 @@ if __name__ == "__main__":
         })
     df.to_csv("Figures/2.1/benchmark_test.csv", index=False)
     print('Finished running the benchmark test')
+
+    plot_dla_results()
+    print('Finished plotting the results of 2.1')
+
     
     run_2_2()
     print('Finished running 2.2')
