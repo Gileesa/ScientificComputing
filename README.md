@@ -62,7 +62,7 @@ The code generates:
 
 ## Assignment 3
 
-The code for the finite difference implementation of the incompressible Navier–Stokes equations can be run by navigating to the `Assignment3` directory. Make sure to install the required libraries first:
+The code for Assignment 3 can be run by navigating to the `Assignment3` directory. Make sure to install the required libraries first:
 
 ```
 pip install -r requirements.txt
@@ -78,6 +78,7 @@ python main.py
 
 #### Output and figures
 
+Simulation for the finite difference implementation of the incompressible Navier–Stokes equations.
 The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
 
 ```
