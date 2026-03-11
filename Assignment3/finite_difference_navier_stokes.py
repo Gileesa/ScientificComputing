@@ -6,7 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from typing import Tuple
+from typing import Tuple, List
 import matplotlib.animation as animation
 
 
@@ -250,7 +250,8 @@ def velocity_update(u: np.ndarray,
 
 
 def apply_velocity_boundary_conditions(u: np.ndarray,
-                                       v: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                                       v: np.ndarray,
+                                       U_inlet:float) -> Tuple[np.ndarray, np.ndarray]:
     """
     Apply the boundary conditions specified in the assignment.
 
@@ -267,7 +268,7 @@ def apply_velocity_boundary_conditions(u: np.ndarray,
     """
 
     # inlet
-    u[:,0] = 1
+    u[:,0] = U_inlet
     v[:,0] = 0
 
     # outlet
@@ -458,8 +459,79 @@ def animate_flow_heat(X: np.ndarray,
     )
 
     plt.show()
-    ani.save("flow_animation_heat.mp4", fps=30)
+    # ani.save("flow_animation_heat.mp4", fps=30)
 
+def run_simulation(u_init: np.ndarray,
+                   v_init: np.ndarray,
+                   p_init: np.ndarray,
+                   dx: float,
+                   dy: float,
+                   dt: float,
+                   rho: float,
+                   nu: float,
+                   nt: int,
+                   cylinder_mask: np.ndarray,
+                   D: float,
+                   U_inlet: float = 1.0,
+                   save_every: int = 1
+                  ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    """
+    Run a 2D finite difference simulation of incompressible flow past a cylinder.
+
+    Parameters
+    ----------
+    u_init, v_init, p_init : np.ndarray
+        Initial velocity and pressure fields.
+    dx, dy : float
+        Grid spacing in x and y.
+    dt : float
+        Time step.
+    rho : float
+        Fluid density.
+    nu : float
+        Kinematic viscosity.
+    nt : int
+        Number of time steps.
+    cylinder_mask : np.ndarray
+        Boolean mask of cylinder obstacle.
+    U_inlet : float
+        Inlet velocity.
+    save_every : int
+        How often to save snapshots for animation.
+
+    Returns
+    -------
+    u_history, v_history, p_history : lists of np.ndarray
+        Snapshots of velocity and pressure fields for animation.
+    """
+
+    # Copy initial fields
+    u = u_init.copy()
+    v = v_init.copy()
+    p = p_init.copy()
+
+    # Lists to store snapshots
+    u_history: List[np.ndarray] = []
+    v_history: List[np.ndarray] = []
+    p_history: List[np.ndarray] = []
+
+    for n in range(nt):
+        # Solve pressure Poisson equation
+        p = pressure_poisson(p, u, v, dx, dy, dt, rho, 50, cylinder_mask)
+
+        # Update velocity fields
+        u, v = velocity_update(u, v, p, dx, dy, dt, rho, nu, cylinder_mask)
+
+        # Apply velocity boundary conditions
+        u, v = apply_velocity_boundary_conditions(u, v, U_inlet=U_inlet)
+
+        # Save snapshots for animation
+        if n % save_every == 0:
+            u_history.append(u.copy())
+            v_history.append(v.copy())
+            p_history.append(p.copy())
+
+    return u_history, v_history, p_history
 
 # ---------------------------------------------------------
 # Main Simulation
@@ -469,9 +541,8 @@ nx, ny = 80, 80
 Lx, Ly = 2.0, 2.0
 
 rho = 1
-nu = 0.1
 
-dt = 0.001
+dt = 0.0001
 nt = 200
 
 X, Y, dx, dy = create_grid(nx, ny, Lx, Ly)
@@ -480,8 +551,11 @@ u = np.zeros((ny, nx))
 v = np.zeros((ny, nx))
 p = np.zeros((ny, nx))
 
+r = 0.2 #radius of cylinder
+nu = 0.1
+
 # cylinder obstacle
-cylinder_mask = create_cylinder_mask(X, Y, cx=0.5, cy=1, r=0.2) # place cylinder off-centre
+cylinder_mask = create_cylinder_mask(X, Y, cx=0.5, cy=1, r=r) # place cylinder off-centre
 
 # lists for animation
 u_history = []
@@ -490,22 +564,32 @@ p_history = []
 
 save_every = 1  # store every 10 timesteps
 
-def run_simulation(nt):
-    for n in range(nt):
 
-        p = pressure_poisson(p, u, v, dx, dy, dt, rho, 50, cylinder_mask)
+# Run simulation
+nu_list = [0.1,0.2,0.3]
+U_inlet_list = [1.0, 1.0, 1.0]
 
-        u, v = velocity_update(u, v, p, dx, dy, dt, rho, nu, cylinder_mask)
+for nu, U_in in zip(nu_list, U_inlet_list):
+    Re = U_in * (2*r) / nu
+    print(f"Simulation with Reynolds number: {Re:.1f}")
 
-        u, v = apply_velocity_boundary_conditions(u, v)
+    u_history, v_history, p_history = run_simulation(
+        u_init=u,
+        v_init=v,
+        p_init=p,
+        dx=dx,
+        dy=dy,
+        dt=dt,
+        rho=rho,
+        nu=nu,
+        nt=nt,
+        cylinder_mask=cylinder_mask,
+        D=(2*r),
+        U_inlet=U_in,
+        save_every=save_every
+    )
+    # Plot final flow using last snapshot
+    plot_flow(X, Y, u_history[-1], v_history[-1], p_history[-1])
 
-        # save snapshots
-        if n % save_every == 0:
-            u_history.append(u.copy())
-            v_history.append(v.copy())
-            p_history.append(p.copy())
-
-
-run_simulation(nt)
-plot_flow(X, Y, u, v, p)
-animate_flow_heat(X, Y, u_history, v_history, p_history)
+    # Animate flow
+    animate_flow_heat(X, Y, u_history, v_history, p_history)
