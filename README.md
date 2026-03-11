@@ -57,3 +57,49 @@ The code generates:
     - Mitosis: Concentration_of_V_at_t_10000_for_ICs___Du_0_14__Dv_0_06__f_0_035__k_0_065__Mitosis__noise__.png
     - Coral: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_06__k_0_062__Coral__noise__.png
     - Zebra-Fish: Concentration_of_V_at_t_10000_for_ICs___Du_0_16__Dv_0_08__f_0_035__k_0_06__Zebra__noise__.png
+
+---
+
+## Assignment 3
+
+The code for the finite difference implementation of the incompressible Navier–Stokes equations can be run by navigating to the `Assignment3` directory. Make sure to install the required libraries first:
+
+```
+pip install -r requirements.txt
+```
+
+The simulation can be executed by running the main script:
+
+```
+python main.py
+```
+
+### 3.1 – Finite Difference Navier–Stokes
+
+#### Output and figures
+
+The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
+
+```
+Figures/NS_finite_difference/
+```
+
+For each simulation, the following are saved:
+
+* **Final flow field plots**
+
+  * Heat maps of velocity magnitude and pressure contours, e.g.:
+
+    ```
+    Figures/NS_finite_difference/Finite Difference Fluid Flow Snapshot Re=1.3333333333333335.png
+    ```
+
+* **Animation of flow evolution**
+
+  * Shows velocity magnitude (heat map) and pressure evolution over time, e.g.:
+
+    ```
+    ABC.mp4
+    ```
+
+---
