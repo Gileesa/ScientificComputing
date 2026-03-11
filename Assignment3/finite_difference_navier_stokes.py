@@ -267,19 +267,41 @@ def apply_velocity_boundary_conditions(u: np.ndarray,
         Velocity fields with boundary conditions applied
     """
 
-    # inlet
+def apply_velocity_boundary_conditions(u: np.ndarray,
+                                       v: np.ndarray,
+                                       U_inlet:float,
+                                       cylinder_mask: np.ndarray,) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Apply the boundary conditions specified in the assignment.
+
+    Left boundary (inlet): u = U_inlet, v = 0
+    Right boundary (outlet): du/dx = 0 (copy from interior)
+    Top/bottom walls: u=v=0
+    Cylinder interior: u=v=0
+
+    Returns
+    -------
+    u, v : np.ndarray
+        Velocity fields with boundary conditions applied
+    """
+
+    # inlet (left)
     u[:,0] = U_inlet
     v[:,0] = 0
 
-    # outlet
+    # outlet (right)
     u[:,-1] = u[:,-2]
     v[:,-1] = v[:,-2]
 
-    # walls
-    u[0,:] = u[1,:]
-    u[-1,:] = u[-2,:]
+    # top/bottom walls
+    u[0,:] = 0
     v[0,:] = 0
+    u[-1,:] = 0
     v[-1,:] = 0
+
+    # cylinder interior
+    u[cylinder_mask] = 0
+    v[cylinder_mask] = 0
 
     return u, v
 
@@ -455,7 +477,7 @@ def run_simulation(u_init: np.ndarray,
         u, v = velocity_update(u, v, p, dx, dy, dt, rho, nu, cylinder_mask)
 
         # Apply velocity boundary conditions
-        u, v = apply_velocity_boundary_conditions(u, v, U_inlet=U_inlet)
+        u, v = apply_velocity_boundary_conditions(u, v, U_inlet=U_inlet, cylinder_mask=cylinder_mask)
 
         # Save snapshots for animation
         if n % save_every == 0:
@@ -498,8 +520,8 @@ save_every = 1  # store every 10 timesteps
 
 
 # Run simulation
-nu_list = [0.1,0.2,0.3]
-U_inlet_list = [1.0, 1.0, 1.0]
+nu_list = [0.1, 0.2, 0.3, 0.1, 0.1, 0.1]
+U_inlet_list = [1.0, 1.0, 1.0, 2.0, 3.0, 4.0]
 
 for nu, U_in in zip(nu_list, U_inlet_list):
     Re = U_in * (2*r) / nu
