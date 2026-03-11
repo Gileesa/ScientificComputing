@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from typing import Tuple, List
 import matplotlib.animation as animation
+import os
 
 
 def create_grid(nx: int, ny: int, Lx: float, Ly: float) -> Tuple[np.ndarray, np.ndarray, float, float]:
@@ -310,14 +311,13 @@ def plot_flow(X: np.ndarray,
               Y: np.ndarray,
               u: np.ndarray,
               v: np.ndarray,
-              p: np.ndarray) -> None:
+              p: np.ndarray,
+              Re: float = None) -> None:
     """
     Visualize pressure and velocity fields.
 
     Pressure is plotted using filled contours.
     Velocity is plotted using quiver arrows.
-
-    This representation is commonly used in CFD to visualize flow fields.
     """
 
     fig = plt.figure(figsize=(11,7), dpi=100)
@@ -329,9 +329,25 @@ def plot_flow(X: np.ndarray,
 
     plt.quiver(X[::2,::2], Y[::2,::2],
                u[::2,::2], v[::2,::2])
+    
+    title = "Finite Difference Fluid Flow Snapshot"
+    if Re is not None:
+        title = f"Finite Difference Fluid Flow Snapshot \n Re={Re}"
+
 
     plt.xlabel('X')
     plt.ylabel('Y')
+    plt.title(title)
+
+
+    # Folder to save images
+    save_folder = "Folders/NS_finite_difference"
+    os.makedirs(save_folder, exist_ok=True)  # create folder if it doesn't exist
+
+    # Save the figure
+    filename = f"{title}.png"
+    plt.savefig(os.path.join(save_folder, filename))
+
     plt.show()
 
 
@@ -340,6 +356,7 @@ def animate_flow_heat(X: np.ndarray,
                       u_hist: list[np.ndarray],
                       v_hist: list[np.ndarray],
                       p_hist: list[np.ndarray],
+                      Re: float,
                       interval: int = 50) -> None:
     """
     Animate the time evolution of a 2D incompressible flow using a heat map of velocity magnitude.
@@ -401,7 +418,7 @@ def animate_flow_heat(X: np.ndarray,
 
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
-        ax.set_title(f"Timestep {frame}")
+        ax.set_title(f"Timestep {frame} (Re={Re})")
 
         return heat
 
@@ -543,7 +560,7 @@ for nu, U_in in zip(nu_list, U_inlet_list):
         save_every=save_every
     )
     # Plot final flow using last snapshot
-    plot_flow(X, Y, u_history[-1], v_history[-1], p_history[-1])
+    plot_flow(X, Y, u_history[-1], v_history[-1], p_history[-1], Re=Re)
 
     # Animate flow
-    animate_flow_heat(X, Y, u_history, v_history, p_history)
+    animate_flow_heat(X, Y, u_history, v_history, p_history, Re=Re)
