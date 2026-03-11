@@ -341,7 +341,7 @@ def plot_flow(X: np.ndarray,
 
 
     # Folder to save images
-    save_folder = "Folders/NS_finite_difference"
+    save_folder = "Figures/NS_finite_difference"
     os.makedirs(save_folder, exist_ok=True)  # create folder if it doesn't exist
 
     # Save the figure
