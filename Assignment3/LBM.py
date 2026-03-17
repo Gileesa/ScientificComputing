@@ -112,7 +112,7 @@ def get_params(Re_targets, tau_nom=0.6, Ma_max=0.1):
 
 # Flow parameters
 #U_inlet = 0.08      # inlet velocity (lattice units, keep ≪ 1 for low Mach)
-Re_targets = [150, 300, 400, 500]       # target Reynolds number
+Re_targets = [300, 400, 500]       # target Reynolds number
 
 # Derived quantities:
 #   Re = U * D / nu   →  nu = U * D / Re
@@ -375,9 +375,9 @@ def main():
             # 7g.  Visualization & progress
             # -------------------------------------------------------------
             if step % plot_every == 0:
-                plot_field(ux, uy, step, U_inlet,'vorticity', i + 2, Re, Nx, Ny, obstacle)
+                plot_field(ux, uy, step, U_inlet,'vorticity', i + 3, Re, Nx, Ny, obstacle)
             if step % plot_every == 0:
-                plot_field(ux, uy, step, U_inlet,'velocity', i + 2, Re, Nx, Ny, obstacle)
+                plot_field(ux, uy, step, U_inlet,'velocity', i + 3, Re, Nx, Ny, obstacle)
 
             if step % 1000 == 0:
                 avg_rho = np.mean(rho[~obstacle])
