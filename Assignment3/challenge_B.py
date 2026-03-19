@@ -130,7 +130,7 @@ def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
         if iter % 500 == 0:
             print(f"num: {num}")
             print(f"rel change: {conv/num}")
-        if conv/num < 1 * 10**-6:
+        if conv/num < 1 * 10**-5: #changing the tolerance to something lower makes it not converge
             print(f"system converged at iteration {iter}")
             return u
     print(f"system failed to converge in {max_run} steps")
