@@ -89,7 +89,7 @@ def initilize_k_field(wall_mask, nx, ny, frequency):
     k[wall_mask==1] = k0 * n_wall
     return k
 
-#this function places the router as a source in coordinates (xr, yr)
+# this function places the router as a source in coordinates (xr, yr)
 def initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma):
     fxy = np.zeros((nx, ny), dtype=float)
     x = np.linspace(0, Lx, nx)
@@ -98,7 +98,7 @@ def initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma):
     fxy = A * np.exp(-((X - xr)**2 + (Y - yr)**2)/(2 * sigma**2))
     return fxy
 
-#main loop helmholtz run
+# main loop helmholtz run
 def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
     u = np.zeros((nx, ny), dtype=np.complex128)
     u_neighbourhood = np.zeros((nx, ny), dtype=np.complex128)
@@ -157,6 +157,7 @@ def animate_wave(u, Lx, Ly, xr, yr, wall_mask, frequency, num_frames=60, save_fi
     
     omega = 2 * np.pi * frequency * 1e9  # Angular frequency (rad/s)
     magnitude = np.abs(u)
+    # magnitude = u
     phase = np.angle(u)
     
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -210,8 +211,84 @@ def animate_wave(u, Lx, Ly, xr, yr, wall_mask, frequency, num_frames=60, save_fi
     
     return anim
 
+def animate_wave_complex(u, Lx, Ly, xr, yr, wall_mask, frequency, num_frames=60):
+    omega = 2 * np.pi * frequency * 1e9  
 
-#wrapper function that runs the whole simulation
+    magnitude = np.abs(u)
+    phase = np.angle(u)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Initial frame
+    wave_real = magnitude * np.cos(phase)
+
+    im = ax.imshow(wave_real.T,
+                   origin='lower',
+                   extent=[0, Lx, 0, Ly],
+                   cmap='RdBu',
+                   vmin=-magnitude.max(),
+                   vmax=magnitude.max())
+
+    # --- WALL OVERLAY ---
+    wall_overlay = np.ma.masked_where(wall_mask == 0, wall_mask)
+    ax.imshow(wall_overlay.T,
+            origin='lower',
+            extent=[0, Lx, 0, Ly],
+            cmap='gray',
+            alpha=0.4,
+            zorder=11)
+
+    # --- ROUTER MARKER ---
+    ax.scatter(xr, yr,
+            marker='*',
+            s=200,
+            c='yellow',
+            edgecolors='black',
+            linewidths=1.5,
+            label='Router',
+            zorder=10)
+
+    # --- COLORBAR ---
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("Wave amplitude (Re[u])")
+
+    # --- TIME LABEL ---
+    time_text = ax.text(0.02, 0.95, '',
+                        transform=ax.transAxes,
+                        color='white',
+                        fontsize=12,
+                        bbox=dict(facecolor='black', alpha=0.7))
+
+    # --- AXIS LABELS ---
+    ax.set_title(f"Wave Field (Helmholtz Solution)\nFrequency = {frequency} GHz")
+    ax.set_xlabel("x (meters)")
+    ax.set_ylabel("y (meters)")
+
+    ax.legend(loc='upper right')
+
+    # --- ANIMATION FUNCTION ---
+    def animate_frame(frame):
+        t = frame / num_frames * (2*np.pi / omega)
+
+        wave_real = magnitude * np.cos(omega * t + phase)
+        im.set_data(wave_real.T)
+
+        time_text.set_text(f"t = {t*1e12:.2f} ps")  # picoseconds
+
+        return [im, time_text]
+
+    anim = animation.FuncAnimation(fig,
+                                   animate_frame,
+                                   frames=num_frames,
+                                   interval=50,
+                                   blit=True)
+
+    plt.tight_layout()
+    plt.show()
+
+    return anim
+
+# wrapper function that runs the whole simulation
 def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, max_run,  animate=True):
     freq_scaled = frequency * scale_freq
     wall_mask = initilize_walls(walls, outer_walls)
@@ -224,8 +301,9 @@ def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thicknes
 
     # Animated plot (optional) CURRENTLY NOT SAVED
     if animate:
-        animate_wave(u, Lx, Ly, xr, yr, wall_mask, freq_scaled, 
-                     num_frames=60)
+        # animate_wave(u, Lx, Ly, xr, yr, wall_mask, freq_scaled, 
+        #              num_frames=60)
+        animate_wave_complex(u, Lx, Ly, xr, yr, wall_mask, freq_scaled, num_frames=60)
     
 def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
     u_abs = np.abs(u)

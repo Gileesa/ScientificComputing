@@ -9,6 +9,7 @@ from matplotlib import cm
 from typing import Tuple, List
 import matplotlib.animation as animation
 import os
+import re
 
 
 def create_grid(nx: int, ny: int, Lx: float, Ly: float) -> Tuple[np.ndarray, np.ndarray, float, float]:
@@ -306,6 +307,13 @@ def apply_velocity_boundary_conditions(u: np.ndarray,
 
     return u, v
 
+def clean_filename(title: str, ext: str = ".png"):
+    """
+    Turn a title into a safe filename.
+    Removes most special characters.
+    """
+    safe = re.sub(r'[^A-Za-z0-9_\-]', '_', title)
+    return safe + ext
 
 def plot_flow(X: np.ndarray,
               Y: np.ndarray,
@@ -345,7 +353,8 @@ def plot_flow(X: np.ndarray,
     os.makedirs(save_folder, exist_ok=True)  # create folder if it doesn't exist
 
     # Save the figure
-    filename = f"{title}.png"
+    cleantitle = clean_filename(title)
+    filename = f"{cleantitle}.png"
     plt.savefig(os.path.join(save_folder, filename))
 
     plt.show()
