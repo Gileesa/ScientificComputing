@@ -82,7 +82,7 @@ def initilize_walls(walls, outer_walls):
     return wall_mask
 
 def initilize_k_field(wall_mask, nx, ny, frequency):
-    c = 3 * 10**8
+    c = 3 * 10**8 # speed of light
     k0 = 2 * np.pi * frequency / c
     k = np.full((nx, ny), k0, dtype=np.complex128)
     n_wall = 2.5 + 0.5j
