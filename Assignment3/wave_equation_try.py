@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+# useful source
+# https://beltoforion.de/en/recreational_mathematics/2d-wave-equation.php
+
 # --- Grid ---
 Lx, Ly = 10.0, 8.0
 nx, ny = 200, 160
