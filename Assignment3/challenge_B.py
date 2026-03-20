@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cmath
 import os
+import matplotlib.animation as animation
 
+# Create discretisation grid
 scale = 40  #scaling so that 1 meter is 20 pixels
 dx = 1/scale    #each pixel is 1/20 cm
 
@@ -100,20 +102,24 @@ def initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma):
 def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
     u = np.zeros((nx, ny), dtype=np.complex128)
     u_neighbourhood = np.zeros((nx, ny), dtype=np.complex128)
-    omega = 0.6
+    omega = 0.6 # for SOR
+
     for iter in range(max_run):
         u_old = u.copy()
-        denom = 4.0 + k**2 * dx**2
+        denom = 4.0 - k**2 * dx**2
         mask = np.abs(denom) < 1e-12
         denom[mask] = 1e-6 * denom[mask]/np.abs(denom[mask] + 1e-12)
+
         u_neighbourhood[1:-1, 1:-1] = ((
             u_old[1:-1, 2:]   +  # right
             u_old[1:-1, :-2]  +  # left
             u_old[2:, 1:-1]   +  # up
             u_old[:-2, 1:-1]  +  # down
-            + fxy[1:-1, 1:-1] * dx**2) 
+            - fxy[1:-1, 1:-1] * dx**2) 
             / denom[1:-1, 1:-1])
+        
         u = (1 - omega)*u + omega * u_neighbourhood
+
         #absorbing boundary conditions where it depends on its closest non boundary neighbour
         for l in range(ny):
             #left wall
@@ -125,6 +131,7 @@ def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
             u[i, 0] = u[i, 1] / (1 - 1j * k[i, 0] * dx)
             #bottom wall
             u[i, -1] = u[i, -2] / (1 - 1j * k[i, -1] * dx)
+
         conv = np.max(np.abs(u - u_old))
         num = max(np.max(np.abs(u)), 1e-12)
         if iter % 500 == 0:
@@ -136,14 +143,89 @@ def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
     print(f"system failed to converge in {max_run} steps")
     return u
 
+
+def animate_wave(u, Lx, Ly, xr, yr, wall_mask, frequency, num_frames=60, save_file=None):
+    """
+    Animate the time-varying wave field from Helmholtz solution.
+    
+    Parameters:
+    - u: Complex wave field from helmholtz solver
+    - frequency: Frequency in GHz
+    - num_frames: Number of frames in animation
+    - save_file: If provided, save animation to this file (e.g., 'wave.mp4')
+    """
+    
+    omega = 2 * np.pi * frequency * 1e9  # Angular frequency (rad/s)
+    magnitude = np.abs(u)
+    phase = np.angle(u)
+    
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Initial frame
+    wave_real = magnitude * np.cos(phase)
+    im = ax.imshow(wave_real.T, origin='lower', extent=[0, Lx, 0, Ly],
+                   cmap='RdBu', vmin=-magnitude.max(), vmax=magnitude.max())
+    
+    # Overlay walls
+    wall_alpha = np.ma.masked_where(wall_mask == 0, wall_mask)
+    ax.imshow(wall_alpha.T, origin='lower', extent=[0, Lx, 0, Ly], 
+              cmap='gray', alpha=0.3)
+    
+    # Router position
+    ax.scatter(xr, yr, marker='*', s=200, c='yellow', edgecolors='black', 
+               linewidths=2, label='Router', zorder=10)
+    
+    # Time display
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, 
+                        color='white', fontsize=14, weight='bold',
+                        bbox=dict(boxstyle='round', facecolor='black', alpha=0.8))
+    
+    ax.set_title(f'WiFi Wave Oscillation at {frequency} GHz', fontsize=16)
+    ax.set_xlabel('x (m)', fontsize=12)
+    ax.set_ylabel('y (m)', fontsize=12)
+    plt.colorbar(im, ax=ax, label='Wave Amplitude')
+    ax.legend(loc='upper right')
+    
+    def animate_frame(frame):
+        # One full period
+        t = frame / num_frames * (1 / (frequency * 1e9))
+        
+        # Real part of wave: Re[u * exp(iωt)]
+        wave_real = magnitude * np.cos(omega * t + phase)
+        
+        im.set_data(wave_real.T)
+        time_text.set_text(f't = {t*1e12:.2f} ps')  # Picoseconds
+        
+        return [im, time_text]
+    
+    anim = animation.FuncAnimation(fig, animate_frame, frames=num_frames, 
+                                   interval=50, blit=True)
+    
+    if save_file:
+        anim.save(save_file, writer='pillow', fps=20)
+        print(f"Animation saved to {save_file}")
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return anim
+
+
 #wrapper function that runs the whole simulation
-def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, max_run):
+def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, max_run,  animate=True):
     freq_scaled = frequency * scale_freq
     wall_mask = initilize_walls(walls, outer_walls)
     k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
     fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
     u = helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run=max_run)
+
+    # static plot
     plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency)
+
+    # Animated plot (optional) CURRENTLY NOT SAVED
+    if animate:
+        animate_wave(u, Lx, Ly, xr, yr, wall_mask, freq_scaled, 
+                     num_frames=60)
     
 def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
     u_abs = np.abs(u)
