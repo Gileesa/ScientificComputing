@@ -99,8 +99,138 @@ def initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma):
     return fxy
 
 
+
+#sparse matrix
+def helmholtz(
+    k: np.ndarray,
+    fxy: np.ndarray,
+    nx: int,
+    ny: int,
+    dx: float,
+) -> np.ndarray:
+    """
+    Function that solves Helmholtz equation on a 2D finite difference grid for wifi simulation.
+
+    Helmholtz equation is as follows:
+
+        Δu + k(x, y)^2 u = f(x, y)
+
+    We solve this on a 2D grid, using a 5-point finite difference scheme. 
+    This leads to a linear system A u = b, which we assemble sparse (CSR) format 
+    and solve with a Scipy sparse solver.
+
+    Params:
+    - k : np.ndarray, shape (nx, ny)
+        Spatially varying wavenumber field, complex-valued. In air we take
+        k = k0, in walls k = n_wall * k0.
+    - fxy : np.ndarray, shape (nx, ny)
+        Source term f(x, y) on the grid (e.g. Gaussian at wifi router location).
+    - nx, ny : int
+        Number of grid points in x- and y-direction.
+    - dx : float
+        Grid spacing (we assume dx = dy).
+
+    Returns:
+    - u : np.ndarray, shape (nx, ny)
+        Complex solution field u(x, y) of the discrete Helmholtz equation.
+    """
+        
+    N = nx * ny
+
+    def idx(i, j):
+        """
+        Map 2D grid indices (i, j) to 1D index n = i * ny + j
+        """
+        return i * ny + j
+
+    # Build index arrays for all grid points
+    # nn is the flat index
+    ii, jj = np.meshgrid(np.arange(nx), np.arange(ny), indexing='ij')
+    ii, jj = ii.ravel(), jj.ravel()
+    nn = idx(ii, jj)
+
+    # Find boundary vs interior points
+    is_bnd = (ii == 0) | (ii == nx-1) | (jj == 0) | (jj == ny-1)
+    is_int = ~is_bnd
+
+    # We will assemble the matrix in compressed sparse row format; i.e three 1D arrays (rows, cols, vals)
+    rows: list[int] = []
+    cols: list[int] = []
+    vals: list[complex] = []
+
+    # r.h.s vector of EQ Ax = b
+    b = np.zeros(N, dtype=np.complex128)
+
+
+    # Interior points: finite difference discretisation of Helmholtz
+    # Get interior points
+    n_int = nn[is_int]
+    i_int = ii[is_int]
+    j_int = jj[is_int]
+    k_int = k[i_int, j_int]
+
+    # Diagonal entries: (k_ij^2 dx^2 - 4) * u_ij
+    rows.extend(n_int)
+    cols.extend(n_int)
+    vals.extend(k_int**2 * dx**2 - 4.0)
+
+    # Off-diagonal entries for the four neighbours: up, down, left, right
+    # Each neighbour contributes +1 to the corresponding column.
+    # u_U + u_D + u_L + u_R
+    for di, dj in [(1,0),(-1,0),(0,1),(0,-1)]:
+        rows.extend(n_int)
+        cols.extend(idx(i_int + di, j_int + dj))
+        vals.extend(np.ones(len(n_int)))
+
+    # r.h.s for interior points: - f_ij dx^2
+    b[n_int] = -fxy[i_int, j_int] * dx**2
+
+
+
+    # Boundary points: absorbing BCs
+    # Get boundary points
+    n_bnd = nn[is_bnd]
+    i_bnd = ii[is_bnd]
+    j_bnd = jj[is_bnd]
+    k_bnd = k[i_bnd, j_bnd]
+
+    # For each boundary point, find the index of the closest interior neighbour
+    # in the normal direction, since this is the direction of flow. 
+    ni_bnd = np.where(i_bnd == 0,      idx(1,      j_bnd),
+             np.where(i_bnd == nx-1,   idx(nx-2,   j_bnd),
+             np.where(j_bnd == 0,      idx(i_bnd,  1),
+                                       idx(i_bnd,  ny-2))))
+
+
+    # Coefficient for u_bnd (diagonal)
+    rows.extend(n_bnd)
+    cols.extend(n_bnd)
+    vals.extend(1.0 - 1j * k_bnd * dx)
+
+    # Coefficient for u_inner (neighbour inside the domain)
+    rows.extend(n_bnd)
+    cols.extend(ni_bnd)
+    vals.extend(-np.ones(len(n_bnd), dtype=np.complex128))
+
+    # Right-hand side is zero for boundary equations
+    b[n_bnd] = 0.0
+
+    # Assemble CSR matrix
+    A = csr_matrix(
+        (np.array(vals, dtype=np.complex128), (np.array(rows), np.array(cols))),
+        shape=(N, N)
+    )
+
+    # Solve
+    u_flat = spsolve(A, b)
+    print("Solved sparse system")
+
+    # reshape back to normal 2D grid
+    u = u_flat.reshape(nx, ny)
+    return u
+
 #main loop helmholtz run
-def helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
+def helmholtz_SOR(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
     u = np.zeros((nx, ny), dtype=np.complex128)
     u_neighbourhood = np.zeros((nx, ny), dtype=np.complex128)
     omega = 0.6
@@ -145,7 +275,7 @@ def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thicknes
     wall_mask = initilize_walls(walls, outer_walls)
     k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
     fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
-    u = helmholtz(k, fxy, nx, ny, dx, wall_mask, max_run=max_run)
+    u = helmholtz(k, fxy, nx, ny, dx)
     plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency)
     
 def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
