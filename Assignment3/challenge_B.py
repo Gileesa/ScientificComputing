@@ -4,6 +4,7 @@ import cmath
 import os
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
+import csv
 
 scale = 20  #scaling so that 1 meter is 20 pixels
 dx = 1/scale    #each pixel is 1/20 cm
@@ -269,6 +270,84 @@ def helmholtz_SOR(k, fxy, nx, ny, dx, wall_mask, max_run = 50000):
     print(f"system failed to converge in {max_run} steps")
     return u
 
+
+def average_signal_db(u_db):
+    # convert dB → linear
+    power = 10**(u_db / 10)
+
+    # average
+    power_avg = np.mean(power)
+
+    # back to dB
+    db_avg = 10 * np.log10(power_avg)
+
+    return db_avg
+
+def compute_wifi_strength(Lx:float,Ly:float, nx:int, ny:int, positions: list[tuple[float, float]], umatrix: np.ndarray, names:list = [], routerpos:tuple[float,float]=None):
+    """
+    Function that computes wifi strenghts at specific locations
+    
+    Params:
+    - Lx, Ly: float
+        Lengths of X and Y dimension in meters
+    - nx, ny: int
+        number of grid points on x- and y-axis
+    - positions: list[tuple[float, float]
+        location tuples of (x,y) positions of all measurements
+    - umatrix: np.ndarray
+        matrix of final wifi strength of simulation. Given in Power (not dB)
+    - names: list[str]
+        list of strings containing room names
+    - routerpos: tuple[float, float]
+        (x,y) position of wifi router
+    """
+
+    strenghts = []
+
+    print("\n===== WIFI SIGNAL STRENGTH=====")
+    for x,y in positions:
+        # transform meter to grid position
+        # NOTE: we are measuring on a 5x5 cm grid. This is approx the same as a 5cm radius circle
+        x_grid = int(x/Lx * nx)
+        y_grid = int(y/Ly * ny)
+        strength = np.abs(umatrix[x_grid, y_grid])
+        strength_db = 10 * np.log10(strength)
+        strenghts.append(strength_db)
+
+
+    if names:
+        for i, name in enumerate(names):
+            print(f"{name}: {strenghts[i]:.4f}")
+    
+    print("=> AVERAGE: ", 10 * np.log10(np.average(strenghts)))
+    print("==============")
+
+    save_folder = "wifi_results"
+    os.makedirs(save_folder, exist_ok=True)
+
+    if routerpos is not None:
+        rx, ry = routerpos
+        filename = f"wifi_strength_rx{rx}_ry{ry}.csv"
+    else:
+        filename = "wifi_strength.csv"
+
+    filepath = os.path.join(save_folder, filename)
+
+    with open(filepath, mode='w', newline='') as file:
+        writer = csv.writer(file)
+
+        # header
+        writer.writerow(["Location", "x", "y", "Strength"])
+
+        # data
+        for i, (x, y) in enumerate(positions):
+            name = names[i] if i < len(names) else f"Point_{i}"
+            writer.writerow([name, x, y, strenghts[i]])
+
+    return strenghts
+
+
+
 #wrapper function that runs the whole simulation
 def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, max_run):
     freq_scaled = frequency * scale_freq
@@ -276,6 +355,11 @@ def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thicknes
     k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
     fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
     u = helmholtz(k, fxy, nx, ny, dx)
+
+    positions = [(1,5), (2,1), (9,1), (9,7)]
+    names = ["Living Room", "Kitchen", "Bathroom", "Bedroom"]
+    compute_wifi_strength(Lx, Ly, nx,ny,positions,u,names,(xr,yr))
+
     plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency)
     
 def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
