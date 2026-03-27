@@ -34,7 +34,7 @@ if __name__ == "__main__":
         cl = f"{res['C_L_max']:.4f}" if res["C_L_max"] is not None else "—"
         print(f"{r['Re']:>6}  {r['tau']:>8.5f}  {stable:>7}  {cd:>8}  {cl:>8}  {res['t_final']:>8.4f}")
 
-    folder = "ScientificComputing/Assignment3/results_FEM"
+    folder = "ScientificComputing/Assignment3/Figures/FEM"
     os.makedirs(folder, exist_ok=True)
     csv_file =  os.path.join(folder, "summary_FEM.csv")
 

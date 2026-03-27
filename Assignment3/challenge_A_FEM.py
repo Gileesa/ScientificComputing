@@ -2,16 +2,13 @@
 
 # %%
 from ngsolve import *
-from ngsolve.webgui import Draw
 import ipywidgets as widgets
 from netgen.occ import *
-import ipywidgets as widgets
 from IPython.display import display
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 import os
-from ngsolve import ds
 
 def make_mesh(maxh=0.07, grading=0.3) -> Mesh:
     """
@@ -46,7 +43,7 @@ def make_mesh(maxh=0.07, grading=0.3) -> Mesh:
     print("Boundaries:", mesh.GetBoundaries())
     return mesh
 
-def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder="ScientificComputing/Assignment3/results_FEM"):
+def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder="ScientificComputing/Assignment3/Figures/FEM"):
     """
     Solve the incompressible Navier-Stokes equations on the Schäfer-Turek geometry using P3/P2 
     Taylor-Hood finite elements and an IMEX (implicit Stokes + explicit convection) time integrator.
@@ -59,13 +56,13 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
     grading : mesh grading near curved boundaries
     folder  : directory for saved figures / animations
     """
-    os.makedirs(folder, exist_ok=True)
+    run_folder = os.path.join(folder, f"Re{Re}")
+    os.makedirs(run_folder, exist_ok=True)
  
     # parameters
     D  = 0.1                   # cylinder diameter [m]
     U_mean  = 1.0                   # mean inflow velocity (used in Re definition)
     nu = U_mean * D / Re            # kinematic viscosity  [m²/s]
-    U_max = 1.5
     print(f"\n Re = {Re}  nu = {nu:.5f}")
  
     # Mesh 
@@ -113,25 +110,37 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
     drag_hist  = []
     lift_hist  = []
     vel        = gfu.components[0]
+    vorticity = grad(vel)[1,0] - grad(vel)[0,1]
     gfut       = GridFunction(V, multidim=0)   # animation snapshots
  
-    # Time loop
+  # Time loop
     t = 0.0
     i = 0
     diverged = False
- 
+
+    # choose physical times to save snapshots, then convert to steps
+    save_times = [0.1*tend, 0.2*tend, 0.4*tend, 0.6*tend, 0.8*tend, 1.0*tend]
+    save_steps = sorted(set(int(round(ts / tau)) for ts in save_times))
+
+    print(f"Re={Re}: save_times = {[round(ts, 3) for ts in save_times]}")
+    print(f"Re={Re}: save_steps = {save_steps}")
+
     tw = widgets.Text(value=f"Re={Re}  t=0.00")
     display(tw)
- 
+
     with TaskManager():
         while t < tend:
             # IMEX step: explicit convection + implicit Stokes
             res = conv.Apply(gfu.vec) + a.mat * gfu.vec
             gfu.vec.data -= tau * inv * res
- 
+
             t += tau
             i += 1
- 
+
+            if i in save_steps:
+                _save_instant_snapshot(mesh, vel, Re, i, t, folder)
+                _save_instant_vorticity_snapshot(mesh, vorticity, Re, i, t, folder)
+
             # Stability check: if velocity blows up, stop early
             umax = sqrt(InnerProduct(vel.vec, vel.vec))
             if umax > 1e6:
@@ -167,10 +176,9 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
     tw.value = f"Re={Re}  {'DIVERGED' if diverged else 'done'}  t={t:.3f}"
  
     # Post-processing
-    _plot_forces(times, drag_hist, lift_hist, Re, folder)
-    _save_final_velocity(mesh, vel, Re, t, folder)
-    _create_animation(mesh, gfut, Re, tau, folder)
- 
+    _plot_forces(times, drag_hist, lift_hist, Re, run_folder)
+    _create_animation(mesh, gfut, Re, tau, run_folder)
+    
     return {
         "Re": Re,
         "diverged": diverged,
@@ -185,6 +193,10 @@ def _plot_forces(times, drag_hist, lift_hist, Re, folder):
     """Plot drag and lift coefficient vs. time."""
     if not times:
         return
+    
+    outdir = os.path.join(folder, "forces")
+    os.makedirs(outdir, exist_ok=True)
+
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5), sharex=True)
     ax1.plot(times, drag_hist, color="steelblue")
     ax1.set_ylabel("C_D")
@@ -193,45 +205,18 @@ def _plot_forces(times, drag_hist, lift_hist, Re, folder):
     ax2.set_ylabel("C_L")
     ax2.set_xlabel("t [s]")
     plt.tight_layout()
-    plt.savefig(f"{folder}/forces_Re{Re}.png", dpi=150)
-    plt.savefig(f"{folder}/forces_Re{Re}.pdf")
+    plt.savefig(os.path.join(outdir, f"forces_Re{Re}.png"), dpi=150)
+    plt.savefig(os.path.join(outdir, f"forces_Re{Re}.pdf"))
+    print(f"Saved force history {os.path.join(outdir, f'forces_Re{Re}.pdf')}")
+ 
     plt.close()
-    print(f"  Saved force history → {folder}/forces_Re{Re}.png")
- 
- 
-def _save_final_velocity(mesh, vel, Re, tend, folder, nx=220):
-    """Save a contour plot of the final velocity magnitude."""
-    x_vals = np.linspace(0, 2.2, nx)
-    y_vals = np.linspace(0, 0.41, int(nx * 0.41 / 2.2))
-    Xg, Yg = np.meshgrid(x_vals, y_vals)
-    speed  = np.zeros_like(Xg)
- 
-    for iy, yv in enumerate(y_vals):
-        for ix, xv in enumerate(x_vals):
-            try:
-                v = vel(mesh(xv, yv))
-                speed[iy, ix] = np.sqrt(v[0]**2 + v[1]**2)
-            except Exception:
-                speed[iy, ix] = 0.0
- 
-    angle = np.linspace(0, 2 * np.pi, 100)
-    fig, ax = plt.subplots(figsize=(12, 3), dpi=150)
-    cf = ax.contourf(Xg, Yg, speed, levels=50, cmap="viridis")
-    plt.colorbar(cf, ax=ax, label="|u| [m/s]")
-    # FIX: cylinder is at (0.2, 0.15) not (0.2, 0.2)
-    ax.plot(0.2 + 0.05 * np.cos(angle),
-            0.15 + 0.05 * np.sin(angle), "w-", lw=1.5)
-    ax.set_title(f"Kármán vortex street — Re={Re}, t={tend:.2f}")
-    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
-    plt.tight_layout()
-    plt.savefig(f"{folder}/velocity_Re{Re}.png", dpi=150)
-    plt.savefig(f"{folder}/velocity_Re{Re}.pdf")
-    plt.close()
-    print(f"  Saved velocity field  → {folder}/velocity_Re{Re}.png")
- 
  
 def _create_animation(mesh, gfut, Re, tau, folder, nx=150):
     """Save an animated GIF of stored velocity snapshots."""
+    
+    outdir = os.path.join(folder, "animation")
+    os.makedirs(outdir, exist_ok=True)
+    
     n_frames = len(gfut.vecs)
     if n_frames == 0:
         print("No animation frames stored.")
@@ -272,9 +257,105 @@ def _create_animation(mesh, gfut, Re, tau, folder, nx=150):
         ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
  
     anim = animation.FuncAnimation(fig, update, frames=n_frames, interval=50)
-    gif  = f"{folder}/karman_Re{Re}.gif"
+    gif = os.path.join(outdir, f"karman_Re{Re}.gif")
     anim.save(gif, fps=20, writer="pillow")
     plt.close()
-    print(f"  Saved animation {gif}")
+    print(f"Saved animation {gif}")
  
- 
+
+def _save_instant_snapshot(mesh, vel, Re, step, t, folder, nx=220):
+    """Save velocity magnitude at a specific timestep."""
+
+    outdir = os.path.join(folder, f"Re{Re}", "snapshots")
+    os.makedirs(outdir, exist_ok=True)
+
+    x_vals = np.linspace(0, 2.2, nx)
+    y_vals = np.linspace(0, 0.41, int(nx * 0.41 / 2.2))
+    Xg, Yg = np.meshgrid(x_vals, y_vals)
+    speed = np.zeros_like(Xg)
+
+    for iy, yv in enumerate(y_vals):
+        for ix, xv in enumerate(x_vals):
+            try:
+                v = vel(mesh(xv, yv))
+                speed[iy, ix] = np.sqrt(v[0]**2 + v[1]**2)
+            except:
+                speed[iy, ix] = 0.0
+
+    angle = np.linspace(0, 2*np.pi, 100)
+
+    fig, ax = plt.subplots(figsize=(12, 3), dpi=150)
+    cf = ax.contourf(Xg, Yg, speed, levels=50, cmap="viridis")
+    plt.colorbar(cf, ax=ax, label="|u| [m/s]")
+
+    ax.plot(0.2 + 0.05*np.cos(angle),
+            0.15 + 0.05*np.sin(angle), "w-", lw=1.5)
+
+    ax.set_title(f"Velocity magnitude — Re={Re}, t={t:.2f} s (step {step})")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(outdir, f"Re{Re}_step{step}.pdf"))
+    plt.close()
+
+    print(f"Saved snapshot → step {step}")
+
+def _save_instant_vorticity_snapshot(mesh, vorticity, Re, step, t, folder, nx=220):
+    """Save vorticity at a selected timestep."""
+    outdir = os.path.join(folder, f"Re{Re}", "snapshots_vorticity")
+    os.makedirs(outdir, exist_ok=True)
+
+    Xg, Yg, field = _sample_field(mesh, vorticity, nx=nx, mode="scalar")
+
+    # robust color scale: ignore a few extreme peaks
+    vmax = np.percentile(np.abs(field), 98)
+    vmax = max(vmax, 1.0)
+
+    angle = np.linspace(0, 2 * np.pi, 100)
+    fig, ax = plt.subplots(figsize=(12, 3), dpi=150)
+
+    cf = ax.contourf(
+        Xg, Yg, field,
+        levels=np.linspace(-vmax, vmax, 61),
+        cmap="RdBu_r",
+        vmin=-vmax, vmax=vmax
+    )
+    plt.colorbar(cf, ax=ax, label="ω [1/s]")
+
+    ax.plot(0.2 + 0.05 * np.cos(angle),
+            0.15 + 0.05 * np.sin(angle), "k-", lw=1.5)
+
+    ax.set_title(f"Vorticity — Re={Re}, t={t:.2f} s (step {step})")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(outdir, f"Re{Re}_step{step}.pdf"), dpi=150)
+    plt.close()
+
+    print(f"Saved vorticity snapshot → step {step}")
+
+
+def _sample_field(mesh, field_obj, nx=220, mode="scalar"):
+    """
+    Sample a scalar field or velocity magnitude on a regular grid.
+    mode = 'scalar' or 'velocity'
+    """
+    x_vals = np.linspace(0, 2.2, nx)
+    y_vals = np.linspace(0, 0.41, int(nx * 0.41 / 2.2))
+    Xg, Yg = np.meshgrid(x_vals, y_vals)
+    field = np.zeros_like(Xg)
+
+    for iy, yv in enumerate(y_vals):
+        for ix, xv in enumerate(x_vals):
+            try:
+                val = field_obj(mesh(xv, yv))
+                if mode == "velocity":
+                    field[iy, ix] = np.sqrt(val[0] ** 2 + val[1] ** 2)
+                else:
+                    field[iy, ix] = val
+            except Exception:
+                field[iy, ix] = 0.0
+
+    return Xg, Yg, field
