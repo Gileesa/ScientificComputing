@@ -1,6 +1,5 @@
 #Assignment_3 
 
-# %%
 from ngsolve import *
 import ipywidgets as widgets
 from netgen.occ import *
@@ -118,7 +117,6 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
     i = 0
     diverged = False
 
-    # choose physical times to save snapshots, then convert to steps
     save_times = [0.1*tend, 0.2*tend, 0.4*tend, 0.6*tend, 0.8*tend, 1.0*tend]
     save_steps = sorted(set(int(round(ts / tau)) for ts in save_times))
 
@@ -141,7 +139,7 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
                 _save_instant_snapshot(mesh, vel, Re, i, t, folder)
                 _save_instant_vorticity_snapshot(mesh, vorticity, Re, i, t, folder)
 
-            # Stability check: if velocity blows up, stop early
+            # Stability check:
             umax = sqrt(InnerProduct(vel.vec, vel.vec))
             if umax > 1e6:
                 print(f"  DIVERGED at t={t:.4f}  (|u|={umax:.2e})")
@@ -188,7 +186,7 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
     }
  
  
-# 3.  Post-processing helpers
+# Helper function
 def _plot_forces(times, drag_hist, lift_hist, Re, folder):
     """Plot drag and lift coefficient vs. time."""
     if not times:
