@@ -60,8 +60,8 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
  
     # parameters
     D  = 0.1                   # cylinder diameter [m]
-    U_mean  = 1.0                   # mean inflow velocity (used in Re definition)
-    nu = U_mean * D / Re            # kinematic viscosity  [m²/s]
+    U  = 1.0                   # mean inflow velocity (used in Re definition)
+    nu = U * D / Re            # kinematic viscosity  [m²/s]
     print(f"\n Re = {Re}  nu = {nu:.5f}")
  
     # Mesh 
@@ -157,8 +157,8 @@ def run_simulation(Re=100, tau=0.001, tend=10.0, maxh=0.07, grading=0.3, folder=
 
                 drag = - F_drag[0]
                 lift = - F_drag[1]
-                C_D  = 2 * drag / (U_mean**2 * D)
-                C_L  = 2 * lift / (U_mean**2 * D)
+                C_D  = 2 * drag / (U**2 * D)
+                C_L  = 2 * lift / (U**2 * D)
                 times.append(t)
                 drag_hist.append(C_D)
                 lift_hist.append(C_L)
