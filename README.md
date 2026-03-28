@@ -76,8 +76,6 @@ python main.py
 
 ### 3.1 – Finite Difference Navier–Stokes
 
-#### Output and figures
-
 Simulation for the finite difference implementation of the incompressible Navier–Stokes equations.
 The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
 
@@ -85,6 +83,7 @@ The code generates visualizations of the flow past a cylinder for different Reyn
 Figures/NS_finite_difference/
 ```
 
+#### Output and figures
 For each simulation, the following are saved or generated:
 
 * **Final flow field plots**
@@ -107,8 +106,6 @@ For each simulation, the following are saved or generated:
 
 ### 3.2 – Finite Element Method Navier–Stokes
 
-#### Output and figures
-
 Simulation for the finite element method implementation of the incompressible Navier–Stokes equations.
 The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
 
@@ -116,6 +113,7 @@ The code generates visualizations of the flow past a cylinder for different Reyn
 Figures/FEM/
 ```
 
+#### Output and figures
 For each simulation, the following are saved:
 
 * **Final flow field plots**
@@ -143,8 +141,6 @@ For each simulation, the following are saved:
 
 ### 3.3 – Lattice Boltzmann Method Navier–Stokes
 
-#### Output and figures
-
 Simulation for the lattice Boltzmann method implementation of the incompressible Navier–Stokes equations.
 The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
 
@@ -152,6 +148,7 @@ The code generates visualizations of the flow past a cylinder for different Reyn
 Figures/LBM/
 ```
 
+#### Output and figures
 For each simulation, the following are saved:
 
 * **Final flow field plots**
@@ -179,8 +176,6 @@ For each simulation, the following are saved:
 
 ### 3.4 – Finite Element Method with CSR implementation for Helmholtz Equation
 
-#### Output and figures
-
 Finite difference simulation of the Helmholtz equation with compressed sparse row (CSR) matrix storage. The goal of this research was to find the most effective position to place a wifi router (gaussian signal source) in a five-room house layout.
 The code generates visualizations of steady-state solution of the Helmholtz equation in this context. The results are stored in the relative path:
 
@@ -188,6 +183,7 @@ The code generates visualizations of steady-state solution of the Helmholtz equa
 Figures/B/
 ```
 
+#### Output and figures
 For each simulation, the following are saved:
 
 * **Final signal solution**
