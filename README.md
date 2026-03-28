@@ -174,7 +174,7 @@ For each simulation, the following are saved:
     ```
 
 
-### 3.4 – Finite Element Method with CSR implementation for Helmholtz Equation
+### 3.4 – Finite Difference Method with CSR implementation for Helmholtz Equation
 
 Finite difference simulation of the Helmholtz equation with compressed sparse row (CSR) matrix storage. The goal of this research was to find the most effective position to place a wifi router (gaussian signal source) in a five-room house layout.
 The code generates visualizations of steady-state solution of the Helmholtz equation in this context. The results are stored in the relative path:
