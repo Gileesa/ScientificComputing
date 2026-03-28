@@ -117,7 +117,7 @@ def helmholtz(
         Δu + k(x, y)^2 u = f(x, y)
 
     We solve this on a 2D grid, using a 5-point finite difference scheme. 
-    This leads to a linear system A u = b, which we assemble sparse (CSR) format 
+    This leads to a linear system A u = b, which we assemble compressed sparse row (CSR) format 
     and solve with a Scipy sparse solver.
 
     Params:
@@ -279,7 +279,7 @@ def compute_wifi_strength(Lx:float,Ly:float, nx:int, ny:int, positions: list[tup
         for i, name in enumerate(names):
             print(f"{name}: {strenghts[i]:.4f}")
     
-    print("=> AVERAGE: ", 10 * np.log10(np.average(strenghts)))
+    print("=> AVERAGE: ", average_signal_db(strenghts))
     print("==============")
 
     save_folder = "wifi_results"
