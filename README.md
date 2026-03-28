@@ -85,7 +85,7 @@ The code generates visualizations of the flow past a cylinder for different Reyn
 Figures/NS_finite_difference/
 ```
 
-For each simulation, the following are saved:
+For each simulation, the following are saved or generated:
 
 * **Final flow field plots**
 
@@ -95,12 +95,114 @@ For each simulation, the following are saved:
     Figures/NS_finite_difference/Finite Difference Fluid Flow Snapshot Re=1.3333333333333335.png
     ```
 
+    * Heat maps of velocity magnitude, e.g.:
+    ```
+    Figures/NS_finite_difference/final_frame_Re_0.33333333333333337.png
+    ```
+
 * **Animation of flow evolution**
 
-  * Shows velocity magnitude (heat map) and pressure evolution over time, e.g.:
+  * Shows velocity magnitude (heat map) evolution over time, but does not save them.
+
+
+### 3.2 – Finite Element Method Navier–Stokes
+
+#### Output and figures
+
+Simulation for the finite element method implementation of the incompressible Navier–Stokes equations.
+The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
+
+```
+Figures/FEM/
+```
+
+For each simulation, the following are saved:
+
+* **Final flow field plots**
+
+    *[description of plot], e.g.:
 
     ```
-    ABC.mp4
+    Figures/FEM/filename
     ```
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/FEM/filename
+    ```
+
+* **Animation of flow evolution**
+
+    *[description of gif], e.g.:
+
+    ```
+    Figures/FEM/filename
+    ```
+
+
+### 3.3 – Lattice Boltzmann Method Navier–Stokes
+
+#### Output and figures
+
+Simulation for the lattice Boltzmann method implementation of the incompressible Navier–Stokes equations.
+The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
+
+```
+Figures/LBM/
+```
+
+For each simulation, the following are saved:
+
+* **Final flow field plots**
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/LBM/filename
+    ```
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/LBM/filename
+    ```
+
+* **Animation of flow evolution**
+
+    *[description of gif], e.g.:
+
+    ```
+    Figures/LBM/filename
+    ```
+
+
+### 3.4 – Finite Element Method with CSR implementation for Helmholtz Equation
+
+#### Output and figures
+
+Finite difference simulation of the Helmholtz equation with compressed sparse row (CSR) matrix storage. The goal of this research was to find the most effective position to place a wifi router (gaussian signal source) in a five-room house layout.
+The code generates visualizations of steady-state solution of the Helmholtz equation in this context. The results are stored in the relative path:
+
+```
+Figures/B/
+```
+
+For each simulation, the following are saved:
+
+* **Final signal solution**
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/B/filename
+    ```
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/B/filename
+    ```
+
 
 ---
