@@ -5,6 +5,7 @@ import os
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 import csv
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 scale = 20  #scaling so that 1 meter is 20 pixels
 dx = 1/scale    #each pixel is 1/20 cm
@@ -64,7 +65,7 @@ def place_wall(wall_mask, x1, y1, x2, y2, scale, wall_thickness, nx, ny, outer_w
 
 #initilizer functions
 #this function given wall coordinates places walls according to it, you need to give inner and outer walls seperately
-def initilize_walls(walls, outer_walls):
+def initilize_walls(walls, outer_walls, show_plot = False):
     wall_mask = np.zeros((nx,ny), dtype=int)
     for wall in walls:
         place_wall(wall_mask, wall[0], wall[1], wall[2], wall[3], scale, wall_thickness, nx, ny)
@@ -73,13 +74,14 @@ def initilize_walls(walls, outer_walls):
         place_wall(wall_mask, wall[0], wall[1], wall[2], wall[3], scale, wall_thickness, nx, ny, outer_wall=True)
 
     #testing to see if the walls are correctly placed
-    plt.figure(figsize=(10,9))
+    if show_plot:
+        plt.figure(figsize=(10,9))
 
-    plt.imshow(wall_mask.T, origin='lower', cmap='binary')
-    plt.title("Wall layout")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.show()
+        plt.imshow(wall_mask.T, origin='lower', cmap='binary')
+        plt.title("Wall layout")
+        plt.xlabel("x")
+        plt.ylabel("y")
+        plt.show()
     return wall_mask
 
 def initilize_k_field(wall_mask, nx, ny, frequency):
@@ -310,17 +312,21 @@ def compute_wifi_strength(Lx:float,Ly:float, nx:int, ny:int, positions: list[tup
         # NOTE: we are measuring on a 5x5 cm grid. This is approx the same as a 5cm radius circle
         x_grid = int(x/Lx * nx)
         y_grid = int(y/Ly * ny)
-        strength = np.abs(umatrix[x_grid, y_grid])
-        strength_db = 10 * np.log10(strength)
+        # strength = np.abs(umatrix[x_grid, y_grid])
+        # strength_db = 20 * np.log10(strength  + 10 ** (-12))
+        # strenghts.append(strength_db)
+        strength = local_average(umatrix, x_grid, y_grid, radius_pixels=1)
+        strength_db = 20 * np.log10(strength + 1e-12)
         strenghts.append(strength_db)
-
 
     if names:
         for i, name in enumerate(names):
             print(f"{name}: {strenghts[i]:.4f}")
     
-    print("=> AVERAGE: ", 10 * np.log10(np.average(strenghts)))
-    print("==============")
+    linear_vals = [10**(s/20) for s in strenghts]
+    avg_linear = np.mean(linear_vals)
+    avg_db = 20 * np.log10(avg_linear + 1e-12)
+    print("=> AVERAGE: ", avg_db)
 
     save_folder = "wifi_results"
     os.makedirs(save_folder, exist_ok=True)
@@ -351,7 +357,7 @@ def compute_wifi_strength(Lx:float,Ly:float, nx:int, ny:int, positions: list[tup
 #wrapper function that runs the whole simulation
 def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, max_run):
     freq_scaled = frequency * scale_freq
-    wall_mask = initilize_walls(walls, outer_walls)
+    wall_mask = initilize_walls(walls, outer_walls, show_plot=True)
     k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
     fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
     u = helmholtz(k, fxy, nx, ny, dx)
@@ -365,12 +371,12 @@ def run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thicknes
 def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
     u_abs = np.abs(u)
     u_abs[u_abs == 0] = 1 * 10**-12 #avoiding having 0s in a loglog plot
-    u_db = 10 * np.log10(u_abs/u_abs.max()) #tried to scale may need changing
+    u_db = 20 * np.log10(u_abs/np.max(u_abs)) #tried to scale may need changing
     print(np.max(u_db))
     print(np.min(u_db))
     plt.figure(figsize=(8,6))
     #plotting |u| loglog plot
-    plt.imshow(u_db.T, origin='lower', extent=[0, Lx, 0, Ly], cmap="jet", vmin=-40, vmax=0)
+    plt.imshow(u_db.T, origin='lower', extent=[0, Lx, 0, Ly], cmap="jet", vmin=-60, vmax=0)
     plt.colorbar(label="Signal Strength (dB)")
     #plotting the walls as an overlay
     wall_alpha = np.ma.masked_where(wall_mask == 0, wall_mask)
@@ -388,13 +394,169 @@ def plot_sim(u, Lx, Ly, xr, yr, wall_mask, scale, frequency):
     plt.xlabel("X (meters)")
     plt.ylabel("Y (meters)")
     plt.legend()
-    out_dir = "Figures/B"
+    out_dir = "ScientificComputing/Assignment3/Figures/B/grid_search_results"
     os.makedirs(out_dir, exist_ok=True)
-    plt.savefig(f"{out_dir}/freq{frequency}xr{xr}yr{yr}.png")
+
+    filename = f"best_router_plot_freq{frequency}_x{xr:.2f}_y{yr:.2f}.pdf"
+    filepath = os.path.join(out_dir, filename)
+
+    plt.savefig(filepath, dpi=300, bbox_inches="tight")
+    print(f"Saved best-point plot to {filepath}")
     plt.show()
-frequency = 2.4
-xr = 2.5
-yr = 5.5
-run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, 90000)
+
+def local_average(u, xg, yg, radius_pixels=1):
+    vals = []
+    for i in range(xg - radius_pixels, xg + radius_pixels + 1):
+        for j in range(yg - radius_pixels, yg + radius_pixels + 1):
+            if 0 <= i < u.shape[0] and 0 <= j < u.shape[1]:
+                if (i - xg)**2 + (j - yg)**2 <= radius_pixels**2:
+                    vals.append(np.abs(u[i, j]))
+    return np.mean(vals)
+
+def evaluate_router_position(xr, yr, Lx, Ly, nx, ny, scale, dx, walls, outer_walls,
+                             wall_thickness, frequency, scale_freq, A, sigma):
+    freq_scaled = frequency * scale_freq
+    wall_mask = initilize_walls(walls, outer_walls, show_plot=False)
+    k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
+    fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
+    u = helmholtz(k, fxy, nx, ny, dx)
+
+    positions = [(1,5), (2,1), (9,1), (9,7)]
+    names = ["Living Room", "Kitchen", "Bathroom", "Bedroom"]
+
+    strengths_db = []
+    for x, y in positions:
+        xg = min(int(x / Lx * nx), nx - 1)
+        yg = min(int(y / Ly * ny), ny - 1)
+        # amp = np.abs(u[xg, yg])
+        # amp = local_average(u, xg, yg)
+        # db = 20 * np.log10(amp + 1e-12)
+        amp = local_average(u, xg, yg, radius_pixels=1)
+        db = 20 * np.log10(amp + 1e-12)
+        strengths_db.append(db)
+
+    # score = sum(strengths_db)
+  
+    linear_vals = [10**(s/20) for s in strengths_db]
+    score = sum(linear_vals)
+    # score = min(strengths_db)   # maximize the weakest room
+    return score, strengths_db, names
+
+def router_worker(args):
+    xr, yr, Lx, Ly, nx, ny, scale, dx, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma = args
+
+    freq_scaled = frequency * scale_freq
+    wall_mask = initilize_walls(walls, outer_walls, show_plot=False)
+    k = initilize_k_field(wall_mask, nx, ny, freq_scaled)
+    fxy = initilize_source(xr, yr, dx, nx, ny, Lx, Ly, A, sigma)
+    u = helmholtz(k, fxy, nx, ny, dx)
+
+    positions = [(1,5), (2,1), (9,1), (9,7)]
+    names = ["Living Room", "Kitchen", "Bathroom", "Bedroom"]
+
+    strengths_db = []
+    for x, y in positions:
+        xg = min(int(x / Lx * nx), nx - 1)
+        yg = min(int(y / Ly * ny), ny - 1)
+
+        # amp = np.abs(u[xg, yg])
+        # db = 20 * np.log10(amp + 1e-12)
+        # strengths_db.append(db)
+
+        amp = local_average(u, xg, yg, radius_pixels=1)
+        db = 20 * np.log10(amp + 1e-12)
+        strengths_db.append(db)
+
+    linear_vals = [10**(s/20) for s in strengths_db]
+    score = sum(linear_vals)
+        
+    # score = min(strengths_db)
+    return xr, yr, score, strengths_db, names
+
+def grid_search_router_parallel(Lx, Ly, nx, ny, scale, dx, walls, outer_walls,
+                                wall_thickness, frequency, scale_freq, A, sigma,
+                                x_values, y_values, max_workers=None):
+    best_score = -np.inf
+    best_pos = None
+    best_strengths = None
+    results = []
+
+    tasks = []
+    for xr in x_values:
+        for yr in y_values:
+            tasks.append((
+                xr, yr, Lx, Ly, nx, ny, scale, dx,
+                walls, outer_walls, wall_thickness,
+                frequency, scale_freq, A, sigma
+            ))
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(router_worker, task) for task in tasks]
+
+        for future in as_completed(futures):
+            xr, yr, score, strengths_db, names = future.result()
+            results.append((xr, yr, score, strengths_db))
+
+            if score > best_score:
+                best_score = score
+                best_pos = (xr, yr)
+                best_strengths = strengths_db
+
+            print(f"tested ({xr:.2f}, {yr:.2f}) -> score {score:.2f} dB")
+
+    save_folder = "ScientificComputing/Assignment3/Figures/B/grid_search_results"
+    os.makedirs(save_folder, exist_ok=True)
+
+    filepath = os.path.join(save_folder, "router_grid_search_parallel.csv")
+    with open(filepath, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["xr", "yr", "score (sum dB)", "Living", "Kitchen", "Bathroom", "Bedroom"])
+        for xr, yr, score, strengths in results:
+            writer.writerow([xr, yr, score] + strengths)
+
+    best_filepath = os.path.join(save_folder, "best_router_position_parallel.csv")
+    with open(best_filepath, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["xr", "yr", "score"])
+        writer.writerow([best_pos[0], best_pos[1], best_score])
+
+    print(f"Saved grid search results to {filepath}")
+    print(f"Saved best position to {best_filepath}")
+
+    print("\nBest router position:", best_pos)
+    print("Best summed score:", best_score)
+    for name, s in zip(names, best_strengths):
+        print(f"{name}: {s:.2f} dB")
+
+    return best_pos, best_score, results
 
 
+# frequency = 2.4
+# # xr = 6
+# # yr = 3
+# xr, yr = best_pos
+# run_sim(Lx, Ly, nx, ny, scale, dx, xr, yr, walls, outer_walls, wall_thickness, frequency, scale_freq, A, sigma, 90000)
+
+if __name__ == "__main__":
+    frequency = 2.4
+
+    x_values = np.arange(1.0, 9.5, 0.5)
+    y_values = np.arange(1.0, 7.5, 0.5)
+
+    best_pos, best_score, results = grid_search_router_parallel(
+        Lx, Ly, nx, ny, scale, dx,
+        walls, outer_walls, wall_thickness,
+        frequency, scale_freq, A, sigma,
+        x_values, y_values,
+        max_workers=4
+    )
+
+    print("Best position found:", best_pos)
+    print("Best score:", best_score)
+
+    xr, yr = best_pos
+    run_sim(
+        Lx, Ly, nx, ny, scale, dx, xr, yr,
+        walls, outer_walls, wall_thickness,
+        frequency, scale_freq, A, sigma, 90000
+    )
