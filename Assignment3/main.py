@@ -1,3 +1,4 @@
+from LBM import run_LBM
 from challenge_A_FEM import run_simulation
 from finite_difference_navier_stokes import runallformain
 from challenge_B import runhelmholtzformain
@@ -57,6 +58,9 @@ if __name__ == "__main__":
 
     # (FD Navier Stokes)
     runallformain()
+
+    # LBM Navier Stokes
+    run_LBM()
 
     # challenge B
     runhelmholtzformain()

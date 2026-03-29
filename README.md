@@ -155,24 +155,18 @@ For each simulation, the following are saved:
 
 * **Final flow field plots**
 
-    *[description of plot], e.g.:
+    *Vorticity plots with different Re numbers and snapshots at full flow through, e.g.:
 
     ```
-    Figures/LBM/filename
+    Figures/LBM/Vorticity/
     ```
 
-    *[description of plot], e.g.:
+    *Velocity plots with different Re numbers and snapshots at full flow through, e.g.:
 
     ```
-    Figures/LBM/filename
+    Figures/LBM/Velocity/
     ```
 
-* **Animation of flow evolution**
-
-    *[description of gif], e.g.:
-
-    ```
-    Figures/LBM/filename
     ```
 
 
