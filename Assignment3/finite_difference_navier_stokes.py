@@ -524,7 +524,7 @@ save_every = 1  # store every 1 timesteps
 def runallformain():
     # Run simulation
     nu_list = [0.1, 0.2, 0.3, 0.1, 0.1, 0.1, 0.1]
-    U_inlet_list = [1.0, 1.0, 1.0, 2.0, 7.0, 15.0, 16.0]
+    U_inlet_list = [1.0, 1.0, 1.0, 2.0, 7.0, 19.0, 20.0]
 
     for nu, U_in in zip(nu_list, U_inlet_list):
         Re = U_in * (2*r) / nu
@@ -550,3 +550,6 @@ def runallformain():
 
         # Animate flow
         animate_flow_heat(X, Y, u_history, v_history, p_history, Re=Re)
+
+
+runallformain()
