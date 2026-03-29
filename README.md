@@ -155,16 +155,16 @@ For each simulation, the following are saved:
 
 * **Final flow field plots**
 
-    *Vorticity plots with different Re numbers and snapshots at full flow through, e.g.:
+    *Vorticity plots with different Re numbers and snapshots at full flow through, each directory named run{num} is for a different Re run e.g.:
 
     ```
-    Figures/LBM/Vorticity/
+    Figures/LBM/Vorticity/run{num}/
     ```
 
-    *Velocity plots with different Re numbers and snapshots at full flow through, e.g.:
+    *Velocity plots with different Re numbers and snapshots at full flow through, each directory named run{num} is for a different Re run e.g.:
 
     ```
-    Figures/LBM/Velocity/
+    Figures/LBM/Velocity/run{num}/
     ```
 
     ```
