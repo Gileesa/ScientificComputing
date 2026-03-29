@@ -487,7 +487,8 @@ def is_valid_position(xr, yr, positions, min_dist=0.5):
             return False
     return True
 
-if __name__ == "__main__":
+
+def runhelmholtzformain():
     frequency = 2.4
 
     #Grid refining
@@ -517,3 +518,9 @@ if __name__ == "__main__":
         walls, outer_walls, wall_thickness,
         frequency, scale_freq, A, sigma, 90000
     )
+    
+
+
+if __name__ == "__main__":
+    runhelmholtzformain()
+

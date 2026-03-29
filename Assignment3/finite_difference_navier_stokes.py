@@ -510,7 +510,7 @@ r = 0.05 #radius of cylinder
 nu = 0.1
 
 # cylinder obstacle
-cylinder_mask = create_cylinder_mask(X, Y, cx=0.155, cy=0.165, r=r) # place cylinder off-centre
+cylinder_mask = create_cylinder_mask(X, Y, cx=0.2, cy=0.2, r=r) # place cylinder off-centre
 
 # lists for animation
 u_history = []
