@@ -76,8 +76,6 @@ python main.py
 
 ### 3.1 – Finite Difference Navier–Stokes
 
-#### Output and figures
-
 Simulation for the finite difference implementation of the incompressible Navier–Stokes equations.
 The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
 
@@ -85,7 +83,8 @@ The code generates visualizations of the flow past a cylinder for different Reyn
 Figures/NS_finite_difference/
 ```
 
-For each simulation, the following are saved:
+#### Output and figures
+For each simulation, the following are saved or generated:
 
 * **Final flow field plots**
 
@@ -95,12 +94,127 @@ For each simulation, the following are saved:
     Figures/NS_finite_difference/Finite Difference Fluid Flow Snapshot Re=1.3333333333333335.png
     ```
 
+    * Heat maps of velocity magnitude, e.g.:
+    ```
+    Figures/NS_finite_difference/final_frame_Re_0.33333333333333337.png
+    ```
+
 * **Animation of flow evolution**
 
-  * Shows velocity magnitude (heat map) and pressure evolution over time, e.g.:
+  * Shows velocity magnitude (heat map) evolution over time, but does not save them.
+
+
+### 3.2 – Finite Element Method Navier–Stokes
+
+Simulation for the finite element method implementation of the incompressible Navier–Stokes equations.
+The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
+
+```
+Figures/FEM/
+```
+
+#### Output and figures
+#### Summary file ScientificComputing/Assignment3/Figures/FEM/summary_FEM.csv
+
+A summary of all simulations is stored as a CSV file containing the main performance metrics for each Reynolds number:
+
+- Re: Reynolds number  
+- tau: time step size  
+- stable: indicates whether the simulation remained stable  
+- C_D_mean: mean drag coefficient (computed from the final time window)  
+- C_L_max: maximum lift coefficient (absolute value)  
+- t_final: final simulation time  
+
+This file provides an overview of the flow behaviour and stability for different Reynolds numbers.
+
+For each Reynolds number Re, the following outputs are generated:
+
+#### Figures/FEM/Re{Re}/snapshots/
+Contains velocity magnitude snapshots at selected time steps, illustrating the flow evolution and wake formation behind the cylinder.
+
+#### Figures/FEM/Re{Re}/snapshots_vorticity/
+Contains vorticity field snapshots at selected time steps, highlighting the formation and shedding of vortices.
+
+#### Figures/FEM/forces/
+Contains plots of the drag coefficient (C_D) and lift coefficient (C_L) over time.
+
+#### Figures/FEM/animation/
+Contains animated GIFs of the velocity magnitude, showing the time evolution of the flow and vortex shedding.
+
+### 3.3 – Lattice Boltzmann Method Navier–Stokes
+
+Simulation for the lattice Boltzmann method implementation of the incompressible Navier–Stokes equations.
+The code generates visualizations of the flow past a cylinder for different Reynolds numbers. The results are stored in the relative path:
+
+```
+Figures/LBM/
+```
+
+#### Output and figures
+For each simulation, the following are saved:
+
+* **Final flow field plots**
+
+    *[description of plot], e.g.:
 
     ```
-    ABC.mp4
+    Figures/LBM/filename
     ```
+
+    *[description of plot], e.g.:
+
+    ```
+    Figures/LBM/filename
+    ```
+
+* **Animation of flow evolution**
+
+    *[description of gif], e.g.:
+
+    ```
+    Figures/LBM/filename
+    ```
+
+
+### 3.4 – Finite Difference Method with CSR implementation for Helmholtz Equation
+
+Finite difference simulation of the Helmholtz equation with compressed sparse row (CSR) matrix storage. The goal of this research was to find the most effective position to place a wifi router (gaussian signal source) in a five-room house layout.
+The code generates visualizations of steady-state solution of the Helmholtz equation in this context. The results are stored in the relative path:
+
+```
+Figures/B/
+```
+
+#### Output and figures
+All results are stored in:
+
+#### ScientificComputing/Assignment3/Figures/B/grid_search_results/
+
+For the WiFi challenge, the following outputs are generated:
+
+#### ScientificComputing/Assignment3/Figures/B/grid_search_results/
+
+- Contains the final WiFi coverage plot for the optimal router position, showing the normalized signal strength distribution across the apartment.
+
+#### router_grid_search_parallel.csv
+
+- Contains the tested router positions together with their optimization scores and the signal strengths at the four measurement points.
+
+### best_router_position_parallel.csv
+
+- Contains the optimal router position and the corresponding best score.
+
+#### wifi_results/
+
+- Contains a CSV file with the simulated signal strengths in the living room, kitchen, bathroom, and bedroom for the final router position.
+
+- Three grid-based optimization plots are generated using progressively finer resolutions 
+(0.5 m, best_router_plot_freq2.4_x9.00_y7.00.pdf
+ 0.1 m, saved as best_router_finegrid_freq2.4_x8.50_y7.20.pdf
+ and 0.05 m, saved as gridbest_router_freq2.4_x8.55_y7.25.pdf.)
+
+This allows for an initial coarse search followed by local refinement to accurately determine the optimal router position.
+
+
 
 ---

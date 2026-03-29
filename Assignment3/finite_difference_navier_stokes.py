@@ -16,26 +16,24 @@ def create_grid(nx: int, ny: int, Lx: float, Ly: float) -> Tuple[np.ndarray, np.
     """
     Create a uniform rectangular grid.
 
-    Parameters
-    ----------
-    nx : int
+    Params
+    - nx : int
         Number of grid points in x direction
-    ny : int
+    - ny : int
         Number of grid points in y direction
-    Lx : float
+    - Lx : float
         Domain length in x direction
-    Ly : float
+    - Ly : float
         Domain length in y direction
 
-    Returns
-    -------
-    X : np.ndarray
+    Returns:
+    - X : np.ndarray
         2D meshgrid x coordinates
-    Y : np.ndarray
+    - Y : np.ndarray
         2D meshgrid y coordinates
-    dx : float
+    - dx : float
         Grid spacing in x direction
-    dy : float
+    - dy : float
         Grid spacing in y direction
     """
 
@@ -59,18 +57,16 @@ def create_cylinder_mask(X: np.ndarray, Y: np.ndarray,
 
     This allows us to enforce no-slip conditions inside the obstacle.
 
-    Parameters
-    ----------
-    X, Y : np.ndarray
+    Params
+    - X, Y : np.ndarray
         Grid coordinates
-    cx, cy : float
+    - cx, cy : float
         Cylinder center
-    r : float
+    - r : float
         Cylinder radius
 
-    Returns
-    -------
-    mask : np.ndarray
+    Returns:
+    - mask : np.ndarray
         Boolean mask for cylinder
     """
 
@@ -92,39 +88,30 @@ def pressure_poisson(p: np.ndarray,
 
     This equation arises because incompressible flow requires:
 
-        ∇ · v = 0
+        ∇ · u = 0
 
-    Pressure acts as a constraint force ensuring that the velocity
-    field remains divergence-free.
+    We solve for the pressure field to ensure this.
 
-    The equation implemented here is the discretized version of:
-
-        ∇²p = RHS(u,v)
-
-    where RHS contains velocity gradient terms.
-
-    Parameters
-    ----------
-    p : np.ndarray
+    Params
+    - p : np.ndarray
         Pressure field
-    u : np.ndarray
+    - u : np.ndarray
         x velocity
-    v : np.ndarray
+    - v : np.ndarray
         y velocity
-    dx, dy : float
+    - dx, dy : float
         Grid spacing
-    dt : float
+    - dt : float
         Time step
-    rho : float
+    - rho : float
         Density
-    nit : int
+    - nit : int
         Number of pressure iterations
-    cylinder_mask : np.ndarray
+    - cylinder_mask : np.ndarray
         Mask for cylinder obstacle
 
-    Returns
-    -------
-    p : np.ndarray
+    Returns:
+    - p : np.ndarray
         Updated pressure field
     """
 
@@ -161,10 +148,10 @@ def pressure_poisson(p: np.ndarray,
 
         # Boundary conditions for pressure
 
-        p[:, -1] = p[:, -2]     # dp/dx = 0 at x = 2 (Neumann)
+        p[:, -1] = p[:, -2]     # dp/dx = 0 at x = Lx (Neumann)
         p[:, 0] = p[:, 1]       # dp/dx = 0 at x = 0 (Neumann)
         p[0, :] = p[1, :]       # dp/dy = 0 at y = 0 (Neumann)
-        p[-1, :] = 0            # p = 0 at y = 2 (Dirichlet)
+        p[-1, :] = 0            # p = 0 at y = Lx (Dirichlet)
 
         # enforce constant pressure inside cylinder
         p[cylinder_mask] = 0
@@ -184,35 +171,26 @@ def velocity_update(u: np.ndarray,
     """
     Update velocity using finite difference Navier-Stokes scheme.
 
-    The implemented equations correspond exactly to the discretized
-    Navier-Stokes equations provided in the assignment.
+    Includes 5-point finite difference scheme and enforces BCs.
 
-    Terms correspond to physical processes:
-
-    convection: fluid transporting momentum
-    pressure gradient: acceleration due to pressure forces
-    diffusion: viscous smoothing of velocity
-
-    Parameters
-    ----------
-    u, v : np.ndarray
+    Params
+    - u, v : np.ndarray
         Velocity fields
-    p : np.ndarray
+    - p : np.ndarray
         Pressure field
-    dx, dy : float
+    - dx, dy : float
         Grid spacing
-    dt : float
+    - dt : float
         Time step
-    rho : float
+    - rho : float
         Fluid density
-    nu : float
+    - nu : float
         Kinematic viscosity
-    cylinder_mask : np.ndarray
+    - cylinder_mask : np.ndarray
         Cylinder mask
 
     Returns
-    -------
-    u, v : np.ndarray
+    - u, v : np.ndarray
         Updated velocity fields
     """
 
@@ -253,37 +231,18 @@ def velocity_update(u: np.ndarray,
 
 def apply_velocity_boundary_conditions(u: np.ndarray,
                                        v: np.ndarray,
-                                       U_inlet:float) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Apply the boundary conditions specified in the assignment.
-
-    Conditions:
-    u = 1 at top lid (y = 2)
-    u,v = 0 on other boundaries
-
-    These correspond to a lid-driven cavity style setup.
-
-    Returns
-    -------
-    u, v : np.ndarray
-        Velocity fields with boundary conditions applied
-    """
-
-def apply_velocity_boundary_conditions(u: np.ndarray,
-                                       v: np.ndarray,
                                        U_inlet:float,
                                        cylinder_mask: np.ndarray,) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Apply the boundary conditions specified in the assignment.
+    Apply the boundary conditions in accordance with the assignment.
 
     Left boundary (inlet): u = U_inlet, v = 0
-    Right boundary (outlet): du/dx = 0 (copy from interior)
+    Right boundary (outlet): du/dx = 0 
     Top/bottom walls: u=v=0
-    Cylinder interior: u=v=0
+    Inside cylinder: u=v=0
 
-    Returns
-    -------
-    u, v : np.ndarray
+    Returns:
+    - u, v : np.ndarray
         Velocity fields with boundary conditions applied
     """
 
@@ -315,48 +274,45 @@ def clean_filename(title: str, ext: str = ".png"):
     safe = re.sub(r'[^A-Za-z0-9_\-]', '_', title)
     return safe + ext
 
-def plot_flow(X: np.ndarray,
-              Y: np.ndarray,
-              u: np.ndarray,
-              v: np.ndarray,
-              p: np.ndarray,
-              Re: float = None) -> None:
-    """
-    Visualize pressure and velocity fields.
+def plot_flow(X, Y, u, v, p, Re=None):
+    fig = plt.figure(figsize=(14,4), dpi=100)  # wide figure
 
-    Pressure is plotted using filled contours.
-    Velocity is plotted using quiver arrows.
-    """
-
-    fig = plt.figure(figsize=(11,7), dpi=100)
-
-    plt.contourf(X, Y, p, alpha=0.5, cmap=cm.viridis)
+    # Pressure field
+    plt.contourf(X, Y, p, alpha=0.6, cmap=cm.viridis)
     plt.colorbar()
 
-    plt.contour(X, Y, p, cmap=cm.viridis)
+    plt.contour(X, Y, p, colors='k', linewidths=0.5)
 
-    plt.quiver(X[::2,::2], Y[::2,::2],
-               u[::2,::2], v[::2,::2])
-    
+    # Quiver
+    skip_x = 10
+    skip_y = 3
+
+    plt.quiver(X[::skip_y, ::skip_x],
+               Y[::skip_y, ::skip_x],
+               u[::skip_y, ::skip_x],
+               v[::skip_y, ::skip_x],
+               scale=5,
+               width=0.002)
+
+    # Titles
     title = "Finite Difference Fluid Flow Snapshot"
     if Re is not None:
-        title = f"Finite Difference Fluid Flow Snapshot \n Re={Re}"
-
+        title += f"\nRe={Re}"
 
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.title(title)
 
+    plt.gca().set_aspect('equal')
 
-    # Folder to save images
+    # Save
     save_folder = "Figures/NS_finite_difference"
-    os.makedirs(save_folder, exist_ok=True)  # create folder if it doesn't exist
+    os.makedirs(save_folder, exist_ok=True)
 
-    # Save the figure
-    cleantitle = clean_filename(title)
-    filename = f"{cleantitle}.png"
+    filename = f"{clean_filename(title)}.png"
     plt.savefig(os.path.join(save_folder, filename))
 
+    plt.tight_layout()
     plt.show()
 
 
@@ -368,32 +324,21 @@ def animate_flow_heat(X: np.ndarray,
                       Re: float,
                       interval: int = 50) -> None:
     """
-    Animate the time evolution of a 2D incompressible flow using a heat map of velocity magnitude.
+    Animates navier-stokes flow over time in 220x36 grid with off-centered cylinder.
 
-    This function visualizes the simulation of fluid flow over time by displaying the magnitude 
-    of the velocity field as a heat map. The cylinder (obstacle) is overlaid for reference. 
-    The heat map highlights regions of high and low flow speed, making vortex formation and 
-    wake structures, such as Kármán vortex streets, easy to observe.  
-
-    Parameters
-    ----------
-    X : np.ndarray
+    Params:
+    - X : np.ndarray
         2D array of x-coordinates of the computational grid.
-    Y : np.ndarray
+    - Y : np.ndarray
         2D array of y-coordinates of the computational grid.
-    u_hist : list of np.ndarray
+    - u_hist : list of np.ndarray
         List of 2D arrays of the x-component of velocity at each saved timestep.
-    v_hist : list of np.ndarray
+    - v_hist : list of np.ndarray
         List of 2D arrays of the y-component of velocity at each saved timestep.
-    p_hist : list of np.ndarray
+    - p_hist : list of np.ndarray
         List of 2D arrays of pressure at each saved timestep (optional for plotting contours).
-    interval : int, optional
+    - interval : int, optional
         Delay between frames in milliseconds (default is 50).
-
-    Returns
-    -------
-    None
-        Displays the animation and saves it as 'flow_animation_heat.mp4'.
     """
 
     fig, ax = plt.subplots(figsize=(11,7), dpi=100)
@@ -438,6 +383,38 @@ def animate_flow_heat(X: np.ndarray,
         interval=interval
     )
 
+    # Save last frame
+    last_frame = len(u_hist) - 1
+
+    u = u_hist[last_frame]
+    v = v_hist[last_frame]
+    speed = np.sqrt(u**2 + v**2)
+
+    fig_last, ax_last = plt.subplots(figsize=(11,7), dpi=100)
+
+    heat = ax_last.imshow(speed, origin='lower',
+                        extent=[X.min(), X.max(), Y.min(), Y.max()],
+                        cmap=cm.plasma, alpha=0.8)
+
+    cbar = fig_last.colorbar(heat, ax=ax_last)
+    cbar.set_label("Velocity magnitude")
+
+    # cylinder outline
+    ax_last.contour(X, Y, cylinder_mask, colors='black')
+
+    ax_last.set_xlabel("X")
+    ax_last.set_ylabel("Y")
+    ax_last.set_title(f"Final Timestep {last_frame} (Re={Re})")
+
+    # save
+    save_folder = "Figures/NS_finite_difference"
+    os.makedirs(save_folder, exist_ok=True)
+
+    filename = f"final_frame_Re_{Re}.png"
+    plt.savefig(os.path.join(save_folder, filename))
+
+    plt.close(fig_last)
+
     plt.show()
     # ani.save("flow_animation_heat.mp4", fps=30)
 
@@ -458,30 +435,28 @@ def run_simulation(u_init: np.ndarray,
     """
     Run a 2D finite difference simulation of incompressible flow past a cylinder.
 
-    Parameters
-    ----------
-    u_init, v_init, p_init : np.ndarray
+    Params:
+    - u_init, v_init, p_init : np.ndarray
         Initial velocity and pressure fields.
-    dx, dy : float
+    - dx, dy : float
         Grid spacing in x and y.
-    dt : float
+    - dt : float
         Time step.
-    rho : float
+    - rho : float
         Fluid density.
-    nu : float
+    - nu : float
         Kinematic viscosity.
-    nt : int
+    - nt : int
         Number of time steps.
-    cylinder_mask : np.ndarray
+    - cylinder_mask : np.ndarray
         Boolean mask of cylinder obstacle.
-    U_inlet : float
+    - U_inlet : float
         Inlet velocity.
-    save_every : int
+    - save_every : int
         How often to save snapshots for animation.
 
-    Returns
-    -------
-    u_history, v_history, p_history : lists of np.ndarray
+    Returns:
+    - u_history, v_history, p_history : lists of np.ndarray
         Snapshots of velocity and pressure fields for animation.
     """
 
@@ -517,8 +492,8 @@ def run_simulation(u_init: np.ndarray,
 # Main Simulation
 # ---------------------------------------------------------
 
-nx, ny = 80, 80
-Lx, Ly = 2.0, 2.0
+nx, ny = 220, 36
+Lx, Ly = 2.20, 0.36
 
 rho = 1
 
@@ -531,45 +506,47 @@ u = np.zeros((ny, nx))
 v = np.zeros((ny, nx))
 p = np.zeros((ny, nx))
 
-r = 0.2 #radius of cylinder
+r = 0.05 #radius of cylinder
 nu = 0.1
 
 # cylinder obstacle
-cylinder_mask = create_cylinder_mask(X, Y, cx=0.5, cy=1, r=r) # place cylinder off-centre
+cylinder_mask = create_cylinder_mask(X, Y, cx=0.155, cy=0.165, r=r) # place cylinder off-centre
 
 # lists for animation
 u_history = []
 v_history = []
 p_history = []
 
-save_every = 1  # store every 10 timesteps
+save_every = 1  # store every 1 timesteps
 
 
-# Run simulation
-nu_list = [0.1, 0.2, 0.3, 0.1, 0.1, 0.1]
-U_inlet_list = [1.0, 1.0, 1.0, 2.0, 3.0, 4.0]
 
-for nu, U_in in zip(nu_list, U_inlet_list):
-    Re = U_in * (2*r) / nu
-    print(f"Simulation with Reynolds number: {Re:.1f}")
+def runallformain():
+    # Run simulation
+    nu_list = [0.1, 0.2, 0.3, 0.1, 0.1, 0.1, 0.1]
+    U_inlet_list = [1.0, 1.0, 1.0, 2.0, 7.0, 15.0, 16.0]
 
-    u_history, v_history, p_history = run_simulation(
-        u_init=u,
-        v_init=v,
-        p_init=p,
-        dx=dx,
-        dy=dy,
-        dt=dt,
-        rho=rho,
-        nu=nu,
-        nt=nt,
-        cylinder_mask=cylinder_mask,
-        D=(2*r),
-        U_inlet=U_in,
-        save_every=save_every
-    )
-    # Plot final flow using last snapshot
-    plot_flow(X, Y, u_history[-1], v_history[-1], p_history[-1], Re=Re)
+    for nu, U_in in zip(nu_list, U_inlet_list):
+        Re = U_in * (2*r) / nu
+        print(f"Simulation with Reynolds number: {Re:.1f}")
 
-    # Animate flow
-    animate_flow_heat(X, Y, u_history, v_history, p_history, Re=Re)
+        u_history, v_history, p_history = run_simulation(
+            u_init=u,
+            v_init=v,
+            p_init=p,
+            dx=dx,
+            dy=dy,
+            dt=dt,
+            rho=rho,
+            nu=nu,
+            nt=nt,
+            cylinder_mask=cylinder_mask,
+            D=(2*r),
+            U_inlet=U_in,
+            save_every=save_every
+        )
+        # Plot final flow using last snapshot
+        plot_flow(X, Y, u_history[-1], v_history[-1], p_history[-1], Re=Re)
+
+        # Animate flow
+        animate_flow_heat(X, Y, u_history, v_history, p_history, Re=Re)
