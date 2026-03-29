@@ -114,30 +114,32 @@ Figures/FEM/
 ```
 
 #### Output and figures
-For each simulation, the following are saved:
+#### Summary file ScientificComputing/Assignment3/Figures/FEM/summary_FEM.csv
 
-* **Final flow field plots**
+A summary of all simulations is stored as a CSV file containing the main performance metrics for each Reynolds number:
 
-    *[description of plot], e.g.:
+- Re: Reynolds number  
+- tau: time step size  
+- stable: indicates whether the simulation remained stable  
+- C_D_mean: mean drag coefficient (computed from the final time window)  
+- C_L_max: maximum lift coefficient (absolute value)  
+- t_final: final simulation time  
 
-    ```
-    Figures/FEM/filename
-    ```
+This file provides an overview of the flow behaviour and stability for different Reynolds numbers.
 
-    *[description of plot], e.g.:
+For each Reynolds number Re, the following outputs are generated:
 
-    ```
-    Figures/FEM/filename
-    ```
+#### Figures/FEM/Re{Re}/snapshots/
+Contains velocity magnitude snapshots at selected time steps, illustrating the flow evolution and wake formation behind the cylinder.
 
-* **Animation of flow evolution**
+#### Figures/FEM/Re{Re}/snapshots_vorticity/
+Contains vorticity field snapshots at selected time steps, highlighting the formation and shedding of vortices.
 
-    *[description of gif], e.g.:
+#### Figures/FEM/forces/
+Contains plots of the drag coefficient (C_D) and lift coefficient (C_L) over time.
 
-    ```
-    Figures/FEM/filename
-    ```
-
+#### Figures/FEM/animation/
+Contains animated GIFs of the velocity magnitude, showing the time evolution of the flow and vortex shedding.
 
 ### 3.3 – Lattice Boltzmann Method Navier–Stokes
 
@@ -184,21 +186,35 @@ Figures/B/
 ```
 
 #### Output and figures
-For each simulation, the following are saved:
+All results are stored in:
 
-* **Final signal solution**
+#### ScientificComputing/Assignment3/Figures/B/grid_search_results/
 
-    *[description of plot], e.g.:
+For the WiFi challenge, the following outputs are generated:
 
-    ```
-    Figures/B/filename
-    ```
+#### ScientificComputing/Assignment3/Figures/B/grid_search_results/
 
-    *[description of plot], e.g.:
+- Contains the final WiFi coverage plot for the optimal router position, showing the normalized signal strength distribution across the apartment.
 
-    ```
-    Figures/B/filename
-    ```
+#### router_grid_search_parallel.csv
+
+- Contains the tested router positions together with their optimization scores and the signal strengths at the four measurement points.
+
+### best_router_position_parallel.csv
+
+- Contains the optimal router position and the corresponding best score.
+
+#### wifi_results/
+
+- Contains a CSV file with the simulated signal strengths in the living room, kitchen, bathroom, and bedroom for the final router position.
+
+- Three grid-based optimization plots are generated using progressively finer resolutions 
+(0.5 m, best_router_plot_freq2.4_x9.00_y7.00.pdf
+ 0.1 m, saved as best_router_finegrid_freq2.4_x8.50_y7.20.pdf
+ and 0.05 m, saved as gridbest_router_freq2.4_x8.55_y7.25.pdf.)
+
+This allows for an initial coarse search followed by local refinement to accurately determine the optimal router position.
+
 
 
 ---

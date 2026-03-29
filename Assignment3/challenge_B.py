@@ -490,6 +490,7 @@ def is_valid_position(xr, yr, positions, min_dist=0.5):
 if __name__ == "__main__":
     frequency = 2.4
 
+    #Grid refining
     # x_values = np.arange(1.0, 9.5, 0.5)
     # y_values = np.arange(1.0, 7.5, 0.5)
 
