@@ -25,7 +25,7 @@ Usage:        python lbm_karman.py
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from numba import njit
+from numba import njit, prange
 
 # =============================================================================
 # 1.  D2Q9 Lattice Definition
@@ -112,7 +112,7 @@ def get_params(Re_targets, tau_nom=0.6, Ma_max=0.1):
 
 # Flow parameters
 #U_inlet = 0.08      # inlet velocity (lattice units, keep ≪ 1 for low Mach)
-Re_targets = [300, 400, 500]       # target Reynolds number
+Re_targets = [50, 100, 150, 400, 500]       # target Reynolds number
 
 # Derived quantities:
 #   Re = U * D / nu   →  nu = U * D / Re
@@ -121,6 +121,7 @@ Re_targets = [300, 400, 500]       # target Reynolds number
                             # cylinder diameter
                       # kinematic viscosity
 tau = 0.55                        # BGK relaxation time
+C_smag = 0.15                     # Smagorinsky constant for subgrid-scale model
 
 # =============================================================================
 # 3.  Equilibrium Distribution Function
@@ -158,7 +159,25 @@ def equilibrium(rho, ux, uy, Nx, Ny):
                                       + 4.5 * cu**2         # (c_i·u)² / (2·cs⁴)
                                       - 1.5 * usqr)         # -|u|² / (2·cs²)
     return feq
-    
+
+
+@njit(parallel=True, cache=True)
+def stream(f_out, f, c):
+    """Numba-accelerated parallel streaming (replaces 9 np.roll calls)."""
+    Nx, Ny = f.shape[0], f.shape[1]
+    for i in range(9):
+        cx_i = c[i, 0]
+        cy_i = c[i, 1]
+        for x in prange(Nx):
+            for y in range(Ny):
+                xs = x - cx_i
+                ys = y - cy_i
+                if xs < 0: xs += Nx
+                elif xs >= Nx: xs -= Nx
+                if ys < 0: ys += Ny
+                elif ys >= Ny: ys -= Ny
+                f[x, y, i] = f_out[xs, ys, i]
+
 
 # =============================================================================
 # 5.  Main Function
@@ -266,9 +285,8 @@ def main():
     #  np.roll provides periodic wrapping, which serves as the y-boundary
     #  condition (periodic in the vertical direction).
 
-    n_steps  = 30000   # total number of timesteps
-    plot_every = 5000    # plot interval (steps)
-    monitor_every = 500
+    n_flow = 3   # base flow-throughs (scaled by Re below)
+    monitor_every = 1000
     U_list, Re_list, Nx_list, Ny_list, r_cyl_list, cx_cyl_list, cy_cyl_list = get_params(Re_targets, tau_nom=0.6, Ma_max=0.1)
     for i in range(len(Re_list)):
         U_inlet = U_list[i]
@@ -280,6 +298,15 @@ def main():
         cy_cyl = cy_cyl_list[i]
         D = 2 * r_cyl
         nu  = U_inlet * D / Re
+        flow_time = int(Nx / U_inlet)
+        # Low Re: steady flow, 1 flow-through enough. High Re: need 3+
+        if Re < 100:
+            n_ft = 1 
+            plot_every = 5000
+        else:
+            n_ft = n_flow
+            plot_every = flow_time
+        n_steps = n_ft * flow_time
         x = np.arange(Nx)
         y = np.arange(Ny)
         X, Y = np.meshgrid(x, y, indexing='ij')    # X,Y have shape (Nx, Ny)
@@ -307,44 +334,58 @@ def main():
 
         # Initialize distributions to equilibrium
         f = equilibrium(rho_init, ux_init, uy_init, Nx, Ny)
+        f_out = np.empty_like(f)
+
+        # Precompute Smagorinsky vectors
+        cc_xx = (c[:, 0] * c[:, 0]).astype(np.float64)
+        cc_xy = (c[:, 0] * c[:, 1]).astype(np.float64)
+        cc_yy = (c[:, 1] * c[:, 1]).astype(np.float64)
+
+        # JIT warmup
+        stream(f, f_out, c)
+        f = equilibrium(rho_init, ux_init, uy_init, Nx, Ny)
+
         print(f"\nRunning {n_steps} timesteps ...")
         for step in range(1, n_steps + 1):
             # -------------------------------------------------------------
-            # 7a.  Macroscopic quantities: density and velocity
-            #      rho = Σ f_i,   rho·u = Σ c_i · f_i
+            # 7a.  Macroscopic quantities
             # -------------------------------------------------------------
             rho = np.sum(f, axis=2)
             ux  = np.sum(f * c[:, 0], axis=2) / rho
             uy  = np.sum(f * c[:, 1], axis=2) / rho
 
             # -------------------------------------------------------------
-            # 7b.  Collision step (BGK single-relaxation-time)
-            #      f_out_i = f_i - (f_i - f_i^eq) / tau
-            #
-            #      f_out is a NEW array so that f (pre-collision) is
-            #      preserved for the bounce-back step below.
+            # 7b.  Collision (BGK + Smagorinsky subgrid model)
             # -------------------------------------------------------------
             feq   = equilibrium(rho, ux, uy, Nx, Ny)
-            f_out = f - (f - feq) / tau
+            f_neq = f - feq
+
+            # Smagorinsky: adapt tau locally based on strain rate
+            Qxx = f_neq @ cc_xx
+            Qxy = f_neq @ cc_xy
+            Qyy = f_neq @ cc_yy
+            S_bar = np.sqrt(2.0 * (Qxx**2 + 2.0 * Qxy**2 + Qyy**2))
+            tau_eff = 0.5 * (tau + np.sqrt(tau**2 + 18.0 * C_smag**2 * S_bar / rho))
+
+            np.subtract(f, f_neq / tau_eff[..., np.newaxis], out=f_out)
 
             # -------------------------------------------------------------
-            # 7c.  Bounce-back on obstacle (no-slip wall condition)
-            #      At obstacle nodes, replace post-collision populations
-            #      with PRE-collision populations from the opposite
-            #      direction.  When streamed, they travel back the way
-            #      they came — reflecting off the obstacle surface.
+            # 7c.  Bounce-back on obstacle
             # -------------------------------------------------------------
-            for dir_idx in range(9):
-                f_out[obstacle, dir_idx] = f[obstacle, opp[dir_idx]]
+            f_out[obstacle] = f[obstacle][:, opp]
 
             # -------------------------------------------------------------
-            # 7d.  Streaming step
-            #      Shift each f_i by its lattice velocity c_i.
-            #      np.roll provides periodic wrapping in y.
+            # 7d.  Streaming (numba-accelerated, parallel)
             # -------------------------------------------------------------
-            for dir_idx in range(9):
-                f[:, :, dir_idx] = np.roll(f_out[:, :, dir_idx], shift=c[dir_idx, 0], axis=0)
-                f[:, :, dir_idx] = np.roll(f[:, :, dir_idx],     shift=c[dir_idx, 1], axis=1)
+            stream(f_out, f, c)
+
+            # No-slip walls (top & bottom)
+            f[:, 0,  2] = f[:, 0,  4]
+            f[:, 0,  5] = f[:, 0,  7]
+            f[:, 0,  6] = f[:, 0,  8]
+            f[:, -1, 4] = f[:, -1, 2]
+            f[:, -1, 7] = f[:, -1, 5]
+            f[:, -1, 8] = f[:, -1, 6]
 
             # -------------------------------------------------------------
             # 7e.  Outlet boundary condition (zero-gradient / open)
@@ -375,9 +416,9 @@ def main():
             # 7g.  Visualization & progress
             # -------------------------------------------------------------
             if step % plot_every == 0:
-                plot_field(ux, uy, step, U_inlet,'vorticity', i + 3, Re, Nx, Ny, obstacle)
+                plot_field(ux, uy, step, U_inlet,'vorticity', i, Re, Nx, Ny, obstacle)
             if step % plot_every == 0:
-                plot_field(ux, uy, step, U_inlet,'velocity', i + 3, Re, Nx, Ny, obstacle)
+                plot_field(ux, uy, step, U_inlet,'velocity', i, Re, Nx, Ny, obstacle)
 
             if step % 1000 == 0:
                 avg_rho = np.mean(rho[~obstacle])
