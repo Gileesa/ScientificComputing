@@ -1,4 +1,5 @@
 from challenge_A_FEM import run_simulation
+from finite_difference_navier_stokes import runallformain
 import csv
 import os
 from multiprocessing import Pool
@@ -51,4 +52,9 @@ if __name__ == "__main__":
             })
 
     print(f"\nSaved summary -> {csv_file}")
+
+
+    # (FD Navier Stokes)
+    runallformain()
+
 

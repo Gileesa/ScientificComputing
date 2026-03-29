@@ -1,0 +1,7 @@
+numpy
+matplotlib
+scipy
+ipywidgets
+numba
+ngsolve
+netgen
